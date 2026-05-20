@@ -3254,7 +3254,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
             ctx.fillText('Complete Level 1 to unlock the Static Fields', WIDTH / 2, 220);
             ctx.fillStyle = '#444';
             ctx.font = '12px monospace';
-            ctx.fillText('Defeat Lord Noise first!', WIDTH / 2, 270);
+            ctx.fillText('Restore harmony to Acoustica first!', WIDTH / 2, 270);
           }
         } else if (startMenuSelection === 2) {
           // Leaderboard view
