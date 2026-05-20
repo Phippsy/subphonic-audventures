@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subphonic Audventures — Admin Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      color: #00ff00;
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+    h2 {
+      color: #00cc00;
+      font-size: 1.1rem;
+      margin: 24px 0 12px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+    .auth-section {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 400px;
+      margin: 40px auto;
+    }
+    .auth-section h1 { text-align: center; margin-bottom: 16px; }
+    label { display: block; color: #888; font-size: 0.85rem; margin-bottom: 4px; }
+    input[type="password"], input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0d0d1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    input:focus { outline: none; border-color: #00ff00; }
+    button {
+      padding: 8px 16px;
+      background: #00aa00;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    button:hover { background: #00dd00; }
+    button.danger { background: #cc3333; color: #fff; }
+    button.danger:hover { background: #ff4444; }
+    button.secondary { background: #555; color: #fff; }
+    button.secondary:hover { background: #777; }
+    .dashboard { display: none; max-width: 900px; margin: 0 auto; }
+    .dashboard.active { display: block; }
+    .status { color: #888; font-size: 0.8rem; margin-bottom: 16px; }
+    .status.error { color: #ff4444; }
+    .status.success { color: #00ff00; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { text-align: left; color: #00ff00; padding: 8px; border-bottom: 2px solid #333; font-size: 0.8rem; }
+    td { padding: 8px; border-bottom: 1px solid #222; font-size: 0.85rem; }
+    tr:hover td { background: #1a1a2a; }
+    .actions { display: flex; gap: 6px; }
+    .actions button { padding: 4px 10px; font-size: 0.75rem; }
+    .modal-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #1a1a2a;
+      border: 1px solid #00ff00;
+      border-radius: 8px;
+      padding: 24px;
+      min-width: 320px;
+    }
+    .modal h3 { color: #00ff00; margin-bottom: 16px; }
+    .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .toolbar button { font-size: 0.8rem; }
+    .badge { background: #333; color: #00ff00; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<div class="auth-section" id="auth">
+  <h1>🔒 Admin Console</h1>
+  <label for="token">Admin Token</label>
+  <input type="password" id="token" placeholder="Enter your admin token" autocomplete="off">
+  <button onclick="authenticate()" style="width:100%">Authenticate</button>
+  <p class="status" id="auth-status"></p>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <h1>Subphonic Audventures — Admin Console</h1>
+  <p class="status" id="status">Connected</p>
+
+  <div class="toolbar">
+    <button onclick="refresh()">↻ Refresh</button>
+    <button class="danger" onclick="confirmReset()">Reset All</button>
+    <button class="secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <h2>Score Leaderboard <span class="badge" id="score-count">0</span></h2>
+  <table id="score-table">
+    <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Speedrun Leaderboard <span class="badge" id="time-count">0</span></h2>
+  <table id="time-table">
+    <thead><tr><th>#</th><th>Name</th><th>Time</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3 id="edit-title">Edit Entry</h3>
+    <label for="edit-name">Name</label>
+    <input type="text" id="edit-name" maxlength="16">
+    <label for="edit-value">Value</label>
+    <input type="number" id="edit-value">
+    <label for="edit-date">Date</label>
+    <input type="text" id="edit-date">
+    <div class="btn-row">
+      <button onclick="saveEdit()">Save</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>Confirm Delete</h3>
+    <p id="delete-msg" style="margin-bottom:12px;color:#ccc;"></p>
+    <div class="btn-row">
+      <button class="danger" onclick="confirmDelete()">Delete</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Confirm Modal -->
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <h3 style="color:#ff4444">Reset All Leaderboards?</h3>
+    <p style="margin-bottom:12px;color:#ccc;">This will permanently delete all score and time entries.</p>
+    <div class="btn-row">
+      <button class="danger" onclick="doReset()">Yes, Reset Everything</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://subphonic-leaderboard.subphonic.workers.dev';
+let adminToken = '';
+let scores = [];
+let times = [];
+let editState = null; // { type: 'score'|'time', index: number }
+let deleteState = null;
+
+function authenticate() {
+  adminToken = document.getElementById('token').value.trim();
+  if (!adminToken) {
+    showAuthError('Please enter a token');
+    return;
+  }
+  // Test the token by fetching scores
+  fetch(`${API}/scores`, { headers: { 'X-Admin-Token': adminToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('dashboard').classList.add('active');
+      refresh();
+    })
+    .catch(() => showAuthError('Failed to connect. Check your token.'));
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-status');
+  el.textContent = msg;
+  el.className = 'status error';
+}
+
+function logout() {
+  adminToken = '';
+  document.getElementById('auth').style.display = 'block';
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('token').value = '';
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+async function refresh() {
+  setStatus('Loading...');
+  try {
+    const [sRes, tRes] = await Promise.all([
+      fetch(`${API}/scores`).then(r => r.json()),
+      fetch(`${API}/times`).then(r => r.json()),
+    ]);
+    scores = sRes;
+    times = tRes;
+    renderScores();
+    renderTimes();
+    setStatus(`Last refreshed: ${new Date().toLocaleTimeString()}`, 'success');
+  } catch (e) {
+    setStatus('Error loading data: ' + e.message, 'error');
+  }
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100);
+  return `${m}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+}
+
+function renderScores() {
+  document.getElementById('score-count').textContent = scores.length;
+  const tbody = document.querySelector('#score-table tbody');
+  tbody.innerHTML = scores.map((e, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${esc(e.name)}</td>
+      <td>${e.score.toLocaleString()}</td>
+      <td>${esc(e.date)}</td>
+      <td class="actions">
+        <button onclick="openEdit('score', ${i})">Edit</button>
+        <button class="danger" onclick="openDelete('score', ${i})">Del</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderTimes() {
+  document.getElementById('time-count').textContent = times.length;
+  const tbody = document.querySelector('#time-table tbody');
+  tbody.innerHTML = times.map((e, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${esc(e.name)}</td>
+      <td>${formatTime(e.time)}</td>
+      <td>${esc(e.date)}</td>
+      <td class="actions">
+        <button onclick="openEdit('time', ${i})">Edit</button>
+        <button class="danger" onclick="openDelete('time', ${i})">Del</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function openEdit(type, index) {
+  editState = { type, index };
+  const entry = type === 'score' ? scores[index] : times[index];
+  document.getElementById('edit-title').textContent = `Edit ${type === 'score' ? 'Score' : 'Time'} Entry #${index + 1}`;
+  document.getElementById('edit-name').value = entry.name;
+  document.getElementById('edit-value').value = type === 'score' ? entry.score : entry.time;
+  document.getElementById('edit-date').value = entry.date;
+  document.getElementById('edit-modal').classList.add('active');
+}
+
+async function saveEdit() {
+  if (!editState) return;
+  const { type, index } = editState;
+  const name = document.getElementById('edit-name').value.trim();
+  const value = parseFloat(document.getElementById('edit-value').value);
+  const date = document.getElementById('edit-date').value.trim();
+
+  if (!name || isNaN(value)) {
+    alert('Please fill in valid name and value');
+    return;
+  }
+
+  const body = type === 'score'
+    ? { name, score: value, date }
+    : { name, time: value, date };
+
+  try {
+    const res = await fetch(`${API}/${type === 'score' ? 'scores' : 'times'}/${index}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (type === 'score') { scores = data; renderScores(); }
+    else { times = data; renderTimes(); }
+    setStatus('Entry updated', 'success');
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+  }
+  closeModal();
+}
+
+function openDelete(type, index) {
+  deleteState = { type, index };
+  const entry = type === 'score' ? scores[index] : times[index];
+  const val = type === 'score' ? entry.score.toLocaleString() + ' pts' : formatTime(entry.time);
+  document.getElementById('delete-msg').textContent = `Delete "${entry.name}" (${val}) from ${type} leaderboard?`;
+  document.getElementById('delete-modal').classList.add('active');
+}
+
+async function confirmDelete() {
+  if (!deleteState) return;
+  const { type, index } = deleteState;
+  try {
+    const res = await fetch(`${API}/${type === 'score' ? 'scores' : 'times'}/${index}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': adminToken },
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (type === 'score') { scores = data; renderScores(); }
+    else { times = data; renderTimes(); }
+    setStatus('Entry deleted', 'success');
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+  }
+  closeModal();
+}
+
+function confirmReset() {
+  document.getElementById('reset-modal').classList.add('active');
+}
+
+async function doReset() {
+  try {
+    const res = await fetch(`${API}/reset`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': adminToken },
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    scores = [];
+    times = [];
+    renderScores();
+    renderTimes();
+    setStatus('All leaderboards reset', 'success');
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+  }
+  closeModal();
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+  editState = null;
+  deleteState = null;
+}
+
+// Enter key on token input
+document.getElementById('token').addEventListener('keydown', e => {
+  if (e.key === 'Enter') authenticate();
+});
+</script>
+</body>
+</html>
