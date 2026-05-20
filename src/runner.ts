@@ -3,7 +3,7 @@
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
 import { initAudio, startBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, sfxThrust } from './audio';
-import { addToL2Leaderboard, isL2HighScore } from './leaderboard';
+import { addToL2Leaderboard, getL2Leaderboard, type LeaderboardEntry } from './leaderboard';
 
 // === CONSTANTS ===
 const WIDTH = 960;
@@ -165,6 +165,9 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let gameOver = false;
   let gameOverTimer = 0;
   let won = false;
+  let wonNameEntry = '';
+  let wonNameSubmitted = false;
+  let wonLeaderboard: LeaderboardEntry[] = [];
   let animTime = 0;
 
   // Damage feedback
@@ -176,7 +179,22 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
   // Input
   const keys: Record<string, boolean> = {};
-  const onKeyDown = (e: KeyboardEvent) => { keys[e.key.toLowerCase()] = true; };
+  const onKeyDown = (e: KeyboardEvent) => {
+    keys[e.key.toLowerCase()] = true;
+    // Win screen name entry
+    if (won && !wonNameSubmitted) {
+      if (e.key === 'Backspace') {
+        wonNameEntry = wonNameEntry.slice(0, -1);
+      } else if (e.key === 'Enter' && wonNameEntry.length > 0) {
+        wonLeaderboard = addToL2Leaderboard(wonNameEntry, score);
+        wonNameSubmitted = true;
+      } else if (e.key.length === 1 && wonNameEntry.length < 16 && /^[a-zA-Z0-9 _\-.]$/.test(e.key)) {
+        wonNameEntry += e.key;
+      }
+      e.preventDefault();
+      return;
+    }
+  };
   const onKeyUp = (e: KeyboardEvent) => { keys[e.key.toLowerCase()] = false; };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -217,12 +235,17 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
     if (gameOver || won) {
       gameOverTimer += dt;
-      if (gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
-        keys[' '] = false;
-        keys.enter = false;
-        if (won) {
+      if (won) {
+        // Only allow continue after name submitted
+        if (wonNameSubmitted && gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
+          keys[' '] = false;
+          keys.enter = false;
           onComplete();
-        } else {
+        }
+      } else {
+        if (gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
+          keys[' '] = false;
+          keys.enter = false;
           // Restart
           health = MAX_HEALTH;
           score = 0;
@@ -272,9 +295,8 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       won = true;
       gameOverTimer = 0;
       score += 1000; // completion bonus
-      if (isL2HighScore(score)) {
-        addToL2Leaderboard('Runner', score);
-      }
+      wonNameEntry = '';
+      wonNameSubmitted = false;
       sfxRunnerWin();
       return;
     }
@@ -948,23 +970,61 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
     // Win overlay
     if (won) {
-      ctx.fillStyle = 'rgba(0, 20, 10, 0.85)';
+      ctx.fillStyle = 'rgba(0, 20, 10, 0.9)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#00ff00';
       ctx.font = 'bold 24px monospace';
-      ctx.fillText('CLARITY BEACON REACHED!', WIDTH / 2, HEIGHT / 2 - 60);
+      ctx.fillText('CLARITY BEACON REACHED!', WIDTH / 2, 60);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '16px monospace';
-      ctx.fillText('The Static Fields are cleansed!', WIDTH / 2, HEIGHT / 2 - 20);
-      ctx.fillStyle = '#ccc';
       ctx.font = '14px monospace';
-      ctx.fillText(`Final Score: ${score}  |  Hats: ${hatsCollected}  |  SIGs: ${sigsCollected}`, WIDTH / 2, HEIGHT / 2 + 20);
-      ctx.fillText(`Static destroyed: ${destroyedCount} (+${destroyedCount * DESTROY_POINTS} pts)`, WIDTH / 2, HEIGHT / 2 + 50);
-      if (gameOverTimer > 1.5) {
-        ctx.fillStyle = '#00ff00';
-        ctx.font = '12px monospace';
-        ctx.fillText('SPACE to continue  |  Q to quit', WIDTH / 2, HEIGHT / 2 + 100);
+      ctx.fillText('The Static Fields are cleansed!', WIDTH / 2, 90);
+      ctx.fillStyle = '#ccc';
+      ctx.font = '13px monospace';
+      ctx.fillText(`Final Score: ${score}  |  Hats: ${hatsCollected}  |  SIGs: ${sigsCollected}`, WIDTH / 2, 120);
+      ctx.fillText(`Static destroyed: ${destroyedCount} (+${destroyedCount * DESTROY_POINTS} pts)`, WIDTH / 2, 142);
+
+      if (!wonNameSubmitted) {
+        // Name entry
+        ctx.fillStyle = '#00ffaa';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText('ENTER YOUR NAME FOR THE LEADERBOARD', WIDTH / 2, 185);
+        // Input box
+        ctx.fillStyle = 'rgba(0, 40, 30, 0.8)';
+        ctx.fillRect(WIDTH / 2 - 140, 195, 280, 32);
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(WIDTH / 2 - 140, 195, 280, 32);
+        // Name text with cursor
+        const cursor = Math.floor(animTime * 3) % 2 === 0 ? '|' : '';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px monospace';
+        ctx.fillText(wonNameEntry + cursor, WIDTH / 2, 217);
+        // Hint
+        ctx.fillStyle = '#666';
+        ctx.font = '10px monospace';
+        ctx.fillText('Type your name and press ENTER to submit', WIDTH / 2, 245);
+      } else {
+        // Show leaderboard
+        ctx.fillStyle = '#00ffaa';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText('LEVEL 2 LEADERBOARD', WIDTH / 2, 180);
+        ctx.font = '11px monospace';
+        const board = wonLeaderboard.length > 0 ? wonLeaderboard : getL2Leaderboard();
+        const startY = 205;
+        for (let i = 0; i < Math.min(board.length, 8); i++) {
+          const isYou = board[i].name === wonNameEntry && board[i].score === score;
+          ctx.fillStyle = isYou ? '#00ffaa' : i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+          const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+          const name = board[i].name.padEnd(16, ' ');
+          const sc = board[i].score.toString().padStart(8, ' ');
+          ctx.fillText(`${rank} ${name} ${sc}  ${board[i].date}`, WIDTH / 2, startY + i * 22);
+        }
+        if (gameOverTimer > 1.5) {
+          ctx.fillStyle = '#00ff00';
+          ctx.font = '12px monospace';
+          ctx.fillText('SPACE to continue  |  Q to quit', WIDTH / 2, HEIGHT - 40);
+        }
       }
       ctx.textAlign = 'left';
     }
@@ -1027,8 +1087,8 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     ctx.ellipse(cx, y + 42, 14, 8, 0, 0, Math.PI);
     ctx.fill();
 
-    // === HAIR ===
-    ctx.fillStyle = '#3a2810';
+    // === HAIR (ginger) ===
+    ctx.fillStyle = '#c85a20';
     ctx.beginPath();
     ctx.ellipse(cx, y + 22, 19, 14, 0, Math.PI + 0.3, -0.3);
     ctx.fill();
@@ -1036,7 +1096,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     ctx.fillRect(cx - 19, y + 22, 6, 14);
     ctx.fillRect(cx + 13, y + 22, 6, 12);
     // Hair detail/texture
-    ctx.strokeStyle = '#2a1a08';
+    ctx.strokeStyle = '#a04818';
     ctx.lineWidth = 1;
     for (let h = 0; h < 5; h++) {
       ctx.beginPath();
@@ -1078,8 +1138,8 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     ctx.beginPath();
     ctx.arc(cx + 6, y + 32, 1, 0, Math.PI * 2);
     ctx.fill();
-    // Eyebrows
-    ctx.strokeStyle = '#3a2810';
+    // Eyebrows (ginger)
+    ctx.strokeStyle = '#c85a20';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx - 12, y + 27);
@@ -1174,29 +1234,261 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   }
 
   function drawSonia(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    // Body (flight suit)
+    // High-detail Sonia portrait — the hero of Subphonic Audventures
+    const cx = x + 40; // center x
+
+    // === BODY (flight suit with sonic tech) ===
+    // Shoulders
     ctx.fillStyle = '#1a1a3a';
-    ctx.fillRect(x + 8, y + 24, 20, 26);
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 72, 28, 16, 0, Math.PI, 0, true);
+    ctx.fill();
+    // Torso
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(cx - 26, y + 56, 52, 34);
+    // Suit inner layer
     ctx.fillStyle = '#2a2a5a';
-    ctx.fillRect(x + 10, y + 26, 16, 22);
-    // Accent stripe
+    ctx.fillRect(cx - 22, y + 58, 44, 30);
+    // Sonic circuit patterns on suit
+    ctx.strokeStyle = 'rgba(0, 200, 170, 0.6)';
+    ctx.lineWidth = 1;
+    // Left circuit line
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, y + 60);
+    ctx.lineTo(cx - 18, y + 72);
+    ctx.lineTo(cx - 12, y + 76);
+    ctx.lineTo(cx - 12, y + 86);
+    ctx.stroke();
+    // Right circuit line
+    ctx.beginPath();
+    ctx.moveTo(cx + 18, y + 60);
+    ctx.lineTo(cx + 18, y + 72);
+    ctx.lineTo(cx + 12, y + 76);
+    ctx.lineTo(cx + 12, y + 86);
+    ctx.stroke();
+    // Circuit nodes
+    ctx.fillStyle = '#00ffaa';
+    ctx.beginPath();
+    ctx.arc(cx - 12, y + 76, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 12, y + 76, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Central chest emblem (sound wave)
+    ctx.strokeStyle = '#00ccaa';
+    ctx.lineWidth = 1.5;
+    for (let w = 0; w < 3; w++) {
+      ctx.beginPath();
+      ctx.arc(cx, y + 68, 4 + w * 4, -0.7, 0.7);
+      ctx.stroke();
+    }
+    // Belt
+    ctx.fillStyle = '#333';
+    ctx.fillRect(cx - 22, y + 80, 44, 4);
     ctx.fillStyle = '#00ccaa';
-    ctx.fillRect(x + 10, y + 26, 2, 22);
-    // Head
-    ctx.fillStyle = '#e8c8a0';
-    ctx.fillRect(x + 10, y + 10, 16, 14);
-    // Hair (purple, slightly wild)
-    ctx.fillStyle = '#7a4a9a';
-    ctx.fillRect(x + 8, y + 4, 20, 10);
-    ctx.fillRect(x + 6, y + 8, 4, 8);
-    ctx.fillRect(x + 26, y + 8, 4, 6);
-    // Goggles
-    ctx.fillStyle = '#00ccaa';
-    ctx.fillRect(x + 10, y + 14, 7, 5);
-    ctx.fillRect(x + 19, y + 14, 7, 5);
+    ctx.fillRect(cx - 4, y + 79, 8, 6);
+
+    // === NECK ===
+    ctx.fillStyle = '#e0b890';
+    ctx.fillRect(cx - 5, y + 47, 10, 10);
+
+    // === HEAD (slightly narrower/feminine) ===
+    ctx.fillStyle = '#e0b890';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 33, 16, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Chin
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 44, 11, 7, 0, 0, Math.PI);
+    ctx.fillStyle = '#d8a880';
+    ctx.fill();
+
+    // === HAIR (purple, flowing, wild — sonic powered) ===
+    ctx.fillStyle = '#7a3a9a';
+    // Main hair volume
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 22, 20, 16, 0, Math.PI + 0.4, -0.4);
+    ctx.fill();
+    // Left flowing strand
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, y + 24);
+    ctx.quadraticCurveTo(cx - 24, y + 36, cx - 20, y + 48);
+    ctx.quadraticCurveTo(cx - 22, y + 54, cx - 18, y + 58);
+    ctx.lineTo(cx - 14, y + 52);
+    ctx.quadraticCurveTo(cx - 18, y + 44, cx - 15, y + 34);
+    ctx.closePath();
+    ctx.fill();
+    // Right flowing strand
+    ctx.beginPath();
+    ctx.moveTo(cx + 18, y + 24);
+    ctx.quadraticCurveTo(cx + 22, y + 34, cx + 20, y + 44);
+    ctx.quadraticCurveTo(cx + 24, y + 52, cx + 20, y + 56);
+    ctx.lineTo(cx + 16, y + 50);
+    ctx.quadraticCurveTo(cx + 18, y + 40, cx + 15, y + 30);
+    ctx.closePath();
+    ctx.fill();
+    // Hair highlights
+    ctx.fillStyle = '#9a5aba';
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, y + 18, 6, 4, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 8, y + 20, 4, 3, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Sonic energy in hair (glowing strand tips)
+    const hairGlow = 0.5 + Math.sin(animTime * 4) * 0.3;
+    ctx.fillStyle = `rgba(0, 200, 255, ${hairGlow})`;
+    ctx.beginPath();
+    ctx.arc(cx - 18, y + 56, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 20, y + 54, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === GOGGLES (signature look — pushed up on forehead) ===
+    // Strap
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 24, 16, 8, 0, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+    // Left lens
+    ctx.fillStyle = '#004433';
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, y + 23, 7, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#00ccaa';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Right lens
+    ctx.fillStyle = '#004433';
+    ctx.beginPath();
+    ctx.ellipse(cx + 8, y + 23, 7, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#00ccaa';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Lens shine
     ctx.fillStyle = '#aaffee';
-    ctx.fillRect(x + 12, y + 15, 3, 3);
-    ctx.fillRect(x + 21, y + 15, 3, 3);
+    ctx.beginPath();
+    ctx.ellipse(cx - 10, y + 21, 3, 2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, y + 21, 3, 2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Bridge
+    ctx.fillStyle = '#00aa88';
+    ctx.fillRect(cx - 2, y + 22, 4, 3);
+
+    // === EYES (large, expressive) ===
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, y + 34, 5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, y + 34, 5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Irises (violet)
+    ctx.fillStyle = '#6a2a9a';
+    ctx.beginPath();
+    ctx.arc(cx - 6, y + 35, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6, y + 35, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(cx - 6, y + 35, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6, y + 35, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye shine (double catch-light for liveliness)
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx - 7, y + 33, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 5, y + 33, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx - 5, y + 36, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, y + 36, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyelashes
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx - 6, y + 34, 5, -2.5, -0.7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + 6, y + 34, 5, -2.4, -0.6);
+    ctx.stroke();
+
+    // === EYEBROWS ===
+    ctx.strokeStyle = '#5a2a7a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, y + 29);
+    ctx.quadraticCurveTo(cx - 6, y + 27, cx - 2, y + 29);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 2, y + 29);
+    ctx.quadraticCurveTo(cx + 6, y + 27, cx + 11, y + 29);
+    ctx.stroke();
+
+    // === NOSE (small, cute) ===
+    ctx.strokeStyle = '#c09070';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, y + 35);
+    ctx.lineTo(cx - 1.5, y + 40);
+    ctx.lineTo(cx + 1, y + 40);
+    ctx.stroke();
+
+    // === MOUTH (confident smirk) ===
+    ctx.strokeStyle = '#8a4030';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, y + 44);
+    ctx.quadraticCurveTo(cx, y + 47, cx + 6, y + 43);
+    ctx.stroke();
+
+    // === ARMS ===
+    ctx.fillStyle = '#1a1a3a';
+    // Left arm
+    ctx.fillRect(cx - 26, y + 58, 7, 22);
+    ctx.fillStyle = '#e0b890';
+    ctx.fillRect(cx - 26, y + 76, 7, 6);
+    // Right arm (raised slightly, holding something sonic)
+    ctx.fillStyle = '#1a1a3a';
+    ctx.save();
+    ctx.translate(cx + 19, y + 58);
+    ctx.rotate(-0.2);
+    ctx.fillRect(0, 0, 7, 20);
+    ctx.fillStyle = '#e0b890';
+    ctx.fillRect(0, 18, 7, 6);
+    ctx.restore();
+
+    // === SONIC DEVICE in right hand ===
+    ctx.fillStyle = '#1a3a4a';
+    ctx.fillRect(cx + 26, y + 66, 4, 12);
+    ctx.fillStyle = '#00ffaa';
+    ctx.beginPath();
+    ctx.arc(cx + 28, y + 64, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Sound waves from device
+    const waveAlpha = 0.4 + Math.sin(animTime * 5) * 0.3;
+    ctx.strokeStyle = `rgba(0, 255, 170, ${waveAlpha})`;
+    ctx.lineWidth = 1;
+    for (let w = 0; w < 3; w++) {
+      ctx.beginPath();
+      ctx.arc(cx + 28, y + 64, 5 + w * 4, -0.8, 0.8);
+      ctx.stroke();
+    }
   }
 
   function drawPlayerRunner(ctx: CanvasRenderingContext2D, x: number, y: number, boosting: boolean, invincible: boolean) {
