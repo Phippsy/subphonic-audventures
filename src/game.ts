@@ -376,7 +376,7 @@ export function mountGame(container: HTMLElement): void {
     { x: 2700, y: 402, activated: false, spinTimer: 0 },
     { x: 3600, y: 402, activated: false, spinTimer: 0 },
     { x: 4800, y: 402, activated: false, spinTimer: 0 },
-    { x: 5380, y: 402, activated: false, spinTimer: 0 },
+    { x: 5330, y: 402, activated: false, spinTimer: 0 },
     { x: 6300, y: 402, activated: false, spinTimer: 0 },
     { x: 7300, y: 402, activated: false, spinTimer: 0 },
   ];
