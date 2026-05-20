@@ -750,7 +750,6 @@ export function mountGame(container: HTMLElement): void {
         // Confirmed quit — return to main menu
         keys.y = false;
         quitConfirmActive = false;
-        running = false;
         startMenuActive = true;
         startMenuSelection = 0;
         introActive = true;
@@ -827,14 +826,40 @@ export function mountGame(container: HTMLElement): void {
           keys[' '] = false;
           keys.enter = false;
           if (startMenuSelection === 0) {
-            // New Game
+            // New Game — reset game state
             startMenuActive = false;
             introActive = false;
+            running = true;
+            gameOver = false;
+            won = false;
             missionTimerRunning = true;
             missionTimer = 0;
+            state.score = 0;
+            state.lives = 3;
+            state.insight = 0;
+            state.hasKey = false;
+            state.checkpointX = 72;
+            state.checkpointY = GROUND_Y - 54;
+            player.x = 72;
+            player.y = GROUND_Y - 54;
+            player.vx = 0;
+            player.vy = 0;
+            playerVisible = true;
+            currentChapter = 0;
+            gate.open = false;
+            shownInterludes.clear();
+            for (const sig of sigs) sig.collected = false;
+            for (const enemy of enemies) enemy.alive = true;
+            for (const cp of checkpoints) { cp.activated = false; cp.spinTimer = 0; }
+            patrick.talked = false;
+            patrick.questionAnswered = false;
+            extraLifeAwarded = false;
+            firstEnemyEncountered = false;
+            firstSigCollected = false;
             infoMessage = 'Mission live. Move right and restore Acoustica.';
             chapterBanner = chapters[0].name;
             chapterBannerTimer = 3;
+            persistState(state);
             initAudio();
             startBGM();
           } else if (startMenuSelection === 1) {
