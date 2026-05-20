@@ -3,7 +3,7 @@
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
 import { initAudio, startBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin } from './audio';
-import { addToLeaderboard, isHighScore } from './leaderboard';
+import { addToL2Leaderboard, isL2HighScore } from './leaderboard';
 
 // === CONSTANTS ===
 const WIDTH = 960;
@@ -165,6 +165,10 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let won = false;
   let animTime = 0;
 
+  // Damage feedback
+  let screenFlash = 0; // 0-1, decays quickly after hit
+  let screenShake = 0; // pixels offset, decays
+
   // Particles
   let particles: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [];
 
@@ -263,8 +267,8 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       won = true;
       gameOverTimer = 0;
       score += 1000; // completion bonus
-      if (isHighScore(score)) {
-        addToLeaderboard('Runner', score);
+      if (isL2HighScore(score)) {
+        addToL2Leaderboard('Runner', score);
       }
       sfxRunnerWin();
       return;
@@ -332,16 +336,18 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
           // Take damage
           health--;
           damageCooldown = DAMAGE_COOLDOWN;
+          screenFlash = 1.0;
+          screenShake = 8;
           sfxStaticHit();
-          // Flash particles
-          for (let p = 0; p < 4; p++) {
+          // Damage burst particles
+          for (let p = 0; p < 12; p++) {
             particles.push({
               x: PLAYER_X + playerW / 2,
               y: playerY + playerH / 2,
-              vx: (Math.random() - 0.5) * 150,
-              vy: (Math.random() - 0.5) * 150,
-              life: 0.4,
-              color: '#ff0000',
+              vx: (Math.random() - 0.5) * 250,
+              vy: (Math.random() - 0.5) * 250,
+              life: 0.5 + Math.random() * 0.3,
+              color: ['#ff0000', '#ff4400', '#ff2222', '#ffaa00'][Math.floor(Math.random() * 4)],
             });
           }
           if (health <= 0) {
@@ -377,12 +383,24 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       p.life -= dt;
       return p.life > 0;
     });
+
+    // Decay screen effects
+    if (screenFlash > 0) screenFlash = Math.max(0, screenFlash - dt * 4);
+    if (screenShake > 0) screenShake = Math.max(0, screenShake - dt * 30);
   };
 
   // === DRAW ===
   const draw = () => {
     const ctx = ctx2!;
     const progress = Math.min(distance / totalDistance, 1);
+
+    // Screen shake offset
+    const shakeX = screenShake > 0 ? (Math.random() - 0.5) * screenShake * 2 : 0;
+    const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake * 2 : 0;
+    if (screenShake > 0) {
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+    }
 
     // === BACKGROUND: Deep space gradient with shifting hue ===
     const bgGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
@@ -644,6 +662,79 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     vigGrad.addColorStop(1, `rgba(0, 0, 0, ${0.35 + progress * 0.15})`);
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // === DAMAGE FLASH OVERLAY ===
+    if (screenFlash > 0) {
+      ctx.fillStyle = `rgba(255, 0, 0, ${screenFlash * 0.4})`;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // === LOW HEALTH WARNING ===
+    if (health <= 2 && health > 0 && !gameOver) {
+      const pulse = 0.08 + Math.sin(animTime * 6) * 0.06;
+      ctx.fillStyle = `rgba(255, 0, 0, ${pulse})`;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      // Edge glow warning
+      const warnGrad = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.35, WIDTH / 2, HEIGHT / 2, WIDTH * 0.6);
+      warnGrad.addColorStop(0, 'transparent');
+      warnGrad.addColorStop(1, `rgba(255, 0, 0, ${pulse * 2})`);
+      ctx.fillStyle = warnGrad;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // === CLARITY BEACON (destination visual) ===
+    if (progress > 0.7) {
+      const beaconIntensity = (progress - 0.7) / 0.3; // 0→1 from 70% to 100%
+      const beaconX = WIDTH - 40 + (1 - beaconIntensity) * 60; // slides in from right
+      const beaconY = HEIGHT / 2 - 20;
+      const beaconSize = 20 + beaconIntensity * 40;
+      const beaconPulse = 0.6 + Math.sin(animTime * 3) * 0.4;
+
+      // Outer glow
+      const bGrad = ctx.createRadialGradient(beaconX, beaconY, 0, beaconX, beaconY, beaconSize * 2);
+      bGrad.addColorStop(0, `rgba(0, 255, 200, ${beaconIntensity * beaconPulse * 0.3})`);
+      bGrad.addColorStop(0.5, `rgba(0, 200, 255, ${beaconIntensity * beaconPulse * 0.15})`);
+      bGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = bGrad;
+      ctx.fillRect(beaconX - beaconSize * 2, beaconY - beaconSize * 2, beaconSize * 4, beaconSize * 4);
+
+      // Core beacon
+      ctx.beginPath();
+      ctx.arc(beaconX, beaconY, beaconSize * 0.3 * beaconPulse, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200, 255, 240, ${beaconIntensity * 0.9})`;
+      ctx.fill();
+
+      // Inner bright point
+      ctx.beginPath();
+      ctx.arc(beaconX, beaconY, beaconSize * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${beaconIntensity})`;
+      ctx.fill();
+
+      // Rays
+      ctx.strokeStyle = `rgba(0, 255, 200, ${beaconIntensity * beaconPulse * 0.5})`;
+      ctx.lineWidth = 1;
+      for (let r = 0; r < 6; r++) {
+        const angle = (r / 6) * Math.PI * 2 + animTime * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(beaconX + Math.cos(angle) * beaconSize * 0.4, beaconY + Math.sin(angle) * beaconSize * 0.4);
+        ctx.lineTo(beaconX + Math.cos(angle) * beaconSize * 1.2, beaconY + Math.sin(angle) * beaconSize * 1.2);
+        ctx.stroke();
+      }
+
+      // Label (when close enough)
+      if (progress > 0.85) {
+        ctx.fillStyle = `rgba(200, 255, 240, ${beaconIntensity * beaconPulse})`;
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('CLARITY BEACON', beaconX, beaconY + beaconSize + 16);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    // Restore shake transform
+    if (screenShake > 0) {
+      ctx.restore();
+    }
 
     // HUD
     drawHUD(ctx, progress);
@@ -1035,56 +1126,69 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
   function drawHUD(ctx: CanvasRenderingContext2D, progress: number) {
     // Semi-transparent HUD background strip
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(0, 8, 180, 80);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, 4, 200, 100);
+    // Border accent
+    ctx.fillStyle = 'rgba(0, 255, 150, 0.15)';
+    ctx.fillRect(0, 4, 2, 100);
 
-    // Health bar (styled)
-    const barX = 12, barY = 14, barW = 120, barH = 14;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-    const healthFrac = health / MAX_HEALTH;
-    const healthGrad = ctx.createLinearGradient(barX, barY, barX + barW * healthFrac, barY);
-    if (health > 2) {
-      healthGrad.addColorStop(0, '#00cc44');
-      healthGrad.addColorStop(1, '#00ff66');
-    } else if (health > 1) {
-      healthGrad.addColorStop(0, '#cc8800');
-      healthGrad.addColorStop(1, '#ffaa00');
-    } else {
-      healthGrad.addColorStop(0, '#cc2200');
-      healthGrad.addColorStop(1, '#ff4444');
-    }
-    ctx.fillStyle = healthGrad;
-    ctx.fillRect(barX, barY, barW * healthFrac, barH);
-    // Health bar shine
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.fillRect(barX, barY, barW * healthFrac, barH / 2);
-    // HP text
+    // === ENERGY PIPS (health) ===
+    const pipX = 12, pipY = 12, pipW = 28, pipH = 18, pipGap = 4;
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 9px monospace';
-    ctx.fillText(`HP ${health}/${MAX_HEALTH}`, barX + 2, barY + 11);
+    ctx.fillText('ENERGY', pipX, pipY + 1);
+    for (let i = 0; i < MAX_HEALTH; i++) {
+      const px = pipX + i * (pipW + pipGap);
+      const py = pipY + 6;
+      // Pip background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(px, py, pipW, pipH);
+      ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+      ctx.strokeRect(px, py, pipW, pipH);
+      if (i < health) {
+        // Filled pip with gradient
+        const pipGrad = ctx.createLinearGradient(px, py, px, py + pipH);
+        if (health > 2) {
+          pipGrad.addColorStop(0, '#00ff66');
+          pipGrad.addColorStop(1, '#00aa44');
+        } else if (health > 1) {
+          pipGrad.addColorStop(0, '#ffcc00');
+          pipGrad.addColorStop(1, '#cc8800');
+        } else {
+          // Last pip - pulsing red
+          const rPulse = 0.7 + Math.sin(animTime * 8) * 0.3;
+          pipGrad.addColorStop(0, `rgba(255, 60, 60, ${rPulse})`);
+          pipGrad.addColorStop(1, `rgba(200, 0, 0, ${rPulse})`);
+        }
+        ctx.fillStyle = pipGrad;
+        ctx.fillRect(px + 1, py + 1, pipW - 2, pipH - 2);
+        // Pip shine
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(px + 1, py + 1, pipW - 2, (pipH - 2) / 2);
+      }
+    }
 
     // Score
     ctx.fillStyle = '#00ff88';
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(`${score}`, 12, 48);
+    ctx.fillText(`${score}`, 12, 56);
     ctx.fillStyle = '#888';
     ctx.font = '9px monospace';
-    ctx.fillText('SCORE', 12, 58);
+    ctx.fillText('SCORE', 12, 66);
 
     // Hats & SIGs row
     ctx.fillStyle = '#ffaa00';
     ctx.font = '11px monospace';
-    ctx.fillText(`\u{1F3A9} ${hatsCollected}`, 12, 76);
+    ctx.fillText(`\u{1F3A9} ${hatsCollected}`, 12, 84);
     ctx.fillStyle = '#00ff66';
-    ctx.fillText(`SIG ${sigsCollected}`, 70, 76);
+    ctx.fillText(`SIG ${sigsCollected}`, 70, 84);
 
     // Invincibility indicator
     if (invincibleTimer > 0) {
       const invPulse = 0.7 + Math.sin(animTime * 8) * 0.3;
       ctx.fillStyle = `rgba(255, 200, 0, ${invPulse})`;
       ctx.font = 'bold 11px monospace';
-      ctx.fillText(`\u26A1 INVINCIBLE ${invincibleTimer.toFixed(1)}s`, 12, 90);
+      ctx.fillText(`\u26A1 INVINCIBLE ${invincibleTimer.toFixed(1)}s`, 12, 98);
     }
 
     // Right side: distance & speed

@@ -166,10 +166,74 @@ export const formatTime = (seconds: number): string => {
   return `${m}:${s.toString().padStart(2, '0')}.${ms}`;
 };
 
+// === LEVEL 2 LEADERBOARD (separate storage & endpoints) ===
+
+const L2_LEADERBOARD_KEY = 'subphonic-audventures-leaderboard-l2-v1';
+
+const getLocalL2Scores = (): LeaderboardEntry[] => {
+  const raw = localStorage.getItem(L2_LEADERBOARD_KEY);
+  if (!raw) return [];
+  try { return (JSON.parse(raw) as LeaderboardEntry[]).slice(0, MAX_ENTRIES); }
+  catch { return []; }
+};
+
+const setLocalL2Scores = (board: LeaderboardEntry[]) => {
+  localStorage.setItem(L2_LEADERBOARD_KEY, JSON.stringify(board));
+};
+
+const fetchRemoteL2Scores = async (): Promise<LeaderboardEntry[]> => {
+  try {
+    const res = await fetch(`${API_BASE}/scores-l2`);
+    if (!res.ok) return [];
+    return await res.json() as LeaderboardEntry[];
+  } catch { return []; }
+};
+
+const postRemoteL2Score = async (entry: LeaderboardEntry): Promise<LeaderboardEntry[]> => {
+  try {
+    const res = await fetch(`${API_BASE}/scores-l2`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    if (!res.ok) return [];
+    return await res.json() as LeaderboardEntry[];
+  } catch { return []; }
+};
+
+export const getL2Leaderboard = (): LeaderboardEntry[] => getLocalL2Scores();
+
+export const addToL2Leaderboard = (name: string, score: number): LeaderboardEntry[] => {
+  const sanitizedName = name.trim().slice(0, 16) || 'ANON';
+  const entry: LeaderboardEntry = {
+    name: sanitizedName,
+    score,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const board = getLocalL2Scores();
+  board.push(entry);
+  board.sort((a, b) => b.score - a.score);
+  const trimmed = board.slice(0, MAX_ENTRIES);
+  setLocalL2Scores(trimmed);
+  postRemoteL2Score(entry).then(remote => {
+    if (remote.length > 0) setLocalL2Scores(mergeScores(getLocalL2Scores(), remote));
+  });
+  return trimmed;
+};
+
+export const isL2HighScore = (score: number): boolean => {
+  const board = getLocalL2Scores();
+  if (board.length < MAX_ENTRIES) return true;
+  return score > (board[board.length - 1]?.score ?? 0);
+};
+
 // --- Initial sync on load: pull remote leaderboards into local ---
 fetchRemoteScores().then(remote => {
   if (remote.length > 0) setLocalScores(mergeScores(getLocalScores(), remote));
 });
 fetchRemoteTimes().then(remote => {
   if (remote.length > 0) setLocalTimes(mergeTimes(getLocalTimes(), remote));
+});
+fetchRemoteL2Scores().then(remote => {
+  if (remote.length > 0) setLocalL2Scores(mergeScores(getLocalL2Scores(), remote));
 });

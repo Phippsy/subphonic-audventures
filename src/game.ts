@@ -1,5 +1,5 @@
 import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
-import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
+import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, getL2Leaderboard, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
 import { markLevel1Complete, isLevel2Unlocked } from './progress';
 
 export interface GameOptions {
@@ -517,7 +517,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
   let introFadeAlpha = 0;
   let startMenuActive = true; // NEW: splash/start screen
   let startMenuSelection = 0; // 0=New Game, 1=Leaderboard, 2=Story
-  let startMenuLeaderboardTab: 'score' | 'time' = 'score';
+  let startMenuLeaderboardTab: 'score' | 'time' | 'l2score' = 'score';
   let showingStory = false; // showing story pages from menu
   let storyPageFromMenu = 0;
   let fallDeathActive = false; // NEW: falling animation instead of explode
@@ -890,6 +890,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
         if (startMenuSelection === 2) {
           if (keys['1']) { startMenuLeaderboardTab = 'score'; keys['1'] = false; }
           if (keys['2']) { startMenuLeaderboardTab = 'time'; keys['2'] = false; }
+          if (keys['3']) { startMenuLeaderboardTab = 'l2score'; keys['3'] = false; }
         }
       }
       return;
@@ -3257,18 +3258,21 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
             ctx.fillText('Restore harmony to Acoustica first!', WIDTH / 2, 270);
           }
         } else if (startMenuSelection === 2) {
-          // Leaderboard view
-          const scoreActive = startMenuLeaderboardTab === 'score';
-          ctx.fillStyle = scoreActive ? '#00ff00' : '#555';
-          ctx.font = scoreActive ? 'bold 12px monospace' : '12px monospace';
-          ctx.fillText('[1] SCORE', WIDTH / 2 - 80, 195);
-          ctx.fillStyle = !scoreActive ? '#00ff00' : '#555';
-          ctx.font = !scoreActive ? 'bold 12px monospace' : '12px monospace';
-          ctx.fillText('[2] SPEEDRUN', WIDTH / 2 + 80, 195);
+          // Leaderboard view with 3 tabs
+          const tab = startMenuLeaderboardTab;
+          ctx.fillStyle = tab === 'score' ? '#00ff00' : '#555';
+          ctx.font = tab === 'score' ? 'bold 11px monospace' : '11px monospace';
+          ctx.fillText('[1] L1 SCORE', WIDTH / 2 - 120, 195);
+          ctx.fillStyle = tab === 'time' ? '#00ff00' : '#555';
+          ctx.font = tab === 'time' ? 'bold 11px monospace' : '11px monospace';
+          ctx.fillText('[2] L1 TIME', WIDTH / 2, 195);
+          ctx.fillStyle = tab === 'l2score' ? '#00ff00' : '#555';
+          ctx.font = tab === 'l2score' ? 'bold 11px monospace' : '11px monospace';
+          ctx.fillText('[3] L2 SCORE', WIDTH / 2 + 120, 195);
 
           ctx.font = '11px monospace';
           const startY = 220;
-          if (startMenuLeaderboardTab === 'score') {
+          if (tab === 'score') {
             const board = getLeaderboard();
             if (board.length === 0) {
               ctx.fillStyle = '#666';
@@ -3282,7 +3286,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
                 ctx.fillText(`${rank} ${name} ${score}  ${board[i].date}`, WIDTH / 2, startY + i * 20);
               }
             }
-          } else {
+          } else if (tab === 'time') {
             const board = getTimeLeaderboard();
             if (board.length === 0) {
               ctx.fillStyle = '#666';
@@ -3296,10 +3300,24 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
                 ctx.fillText(`${rank} ${name} ${time}  ${board[i].date}`, WIDTH / 2, startY + i * 20);
               }
             }
+          } else {
+            const board = getL2Leaderboard();
+            if (board.length === 0) {
+              ctx.fillStyle = '#666';
+              ctx.fillText('No entries yet. Complete Level 2!', WIDTH / 2, 280);
+            } else {
+              for (let i = 0; i < Math.min(board.length, 10); i++) {
+                ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+                const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+                const name = board[i].name.padEnd(16, ' ');
+                const score = board[i].score.toString().padStart(8, ' ');
+                ctx.fillText(`${rank} ${name} ${score}  ${board[i].date}`, WIDTH / 2, startY + i * 20);
+              }
+            }
           }
           ctx.fillStyle = '#555';
           ctx.font = '10px monospace';
-          ctx.fillText('1/2: switch tab • ←→: menu • ENTER: select', WIDTH / 2, HEIGHT - 48);
+          ctx.fillText('1/2/3: switch tab • ←→: menu • ENTER: select', WIDTH / 2, HEIGHT - 48);
         } else if (startMenuSelection === 3) {
           // Story selected — show prompt
           ctx.fillStyle = '#aaa';
