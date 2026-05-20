@@ -2,7 +2,7 @@
 // Geometry Dash / Flappy Bird inspired auto-scrolling level
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
-import { initAudio, startBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin } from './audio';
+import { initAudio, startBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, sfxThrust } from './audio';
 import { addToL2Leaderboard, isL2HighScore } from './leaderboard';
 
 // === CONSTANTS ===
@@ -149,6 +149,8 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let playerW = 36;
   let playerH = 44;
   let thrusting = false;
+  let wasThrusting = false;
+  let thrustSfxCooldown = 0;
 
   let invincibleTimer = 0;
   let damageCooldown = 0;
@@ -278,15 +280,29 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     thrusting = !!(keys.arrowup || keys.w || keys[' ']);
     if (thrusting) {
       playerVY += THRUST_FORCE * dt;
+      // Play thrust sound on start or periodically
+      if (!wasThrusting || thrustSfxCooldown <= 0) {
+        sfxThrust();
+        thrustSfxCooldown = 0.12;
+      }
     } else {
       playerVY += GRAVITY * dt;
     }
+    wasThrusting = thrusting;
+    if (thrustSfxCooldown > 0) thrustSfxCooldown -= dt;
     playerVY = Math.max(-MAX_VY, Math.min(MAX_VY, playerVY));
     playerY += playerVY * dt;
 
-    // Clamp to screen
+    // Ceiling clamp
     if (playerY < 0) { playerY = 0; playerVY = 0; }
-    if (playerY + playerH > HEIGHT) { playerY = HEIGHT - playerH; playerVY = 0; }
+    // Fall off bottom = death
+    if (playerY > HEIGHT + 20) {
+      gameOver = true;
+      gameOverTimer = 0;
+      screenFlash = 1.0;
+      screenShake = 10;
+      sfxStaticHit();
+    }
 
     // Timers
     if (invincibleTimer > 0) invincibleTimer -= dt;
@@ -455,16 +471,43 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     }
     ctx.globalAlpha = 1;
 
-    // === ENERGY GRID FLOOR ===
+    // === AURORA / ENERGY WAVES (mid-ground atmosphere) ===
+    ctx.globalAlpha = 0.06 + progress * 0.04;
+    for (let w = 0; w < 3; w++) {
+      const waveY = HEIGHT * 0.3 + w * 60;
+      const waveHue = 180 + w * 40 + hueShift;
+      ctx.strokeStyle = `hsl(${waveHue}, 70%, 60%)`;
+      ctx.lineWidth = 2 - w * 0.5;
+      ctx.beginPath();
+      for (let x = 0; x < WIDTH; x += 6) {
+        const yOff = Math.sin((x * 0.008) + animTime * (0.8 + w * 0.3) + w * 2) * (20 + w * 10);
+        const yOff2 = Math.sin((x * 0.015) + animTime * 1.2 + w) * 8;
+        if (x === 0) ctx.moveTo(x, waveY + yOff + yOff2);
+        else ctx.lineTo(x, waveY + yOff + yOff2);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // === FLOATING DEBRIS / DUST MOTES ===
+    ctx.fillStyle = 'rgba(150, 200, 255, 0.12)';
+    for (let d = 0; d < 20; d++) {
+      const dx = ((d * 251 + 70) - (distance * 0.15 * (1 + d % 3 * 0.3))) % WIDTH;
+      const dy = (d * 89 + 30) % (HEIGHT - 60) + 30;
+      const dSize = 1 + (d % 3);
+      ctx.fillRect(dx < 0 ? dx + WIDTH : dx, dy, dSize, dSize);
+    }
+
+    // === ENERGY GRID FLOOR (danger zone — falling off = death) ===
     const floorY = HEIGHT - 24;
     const floorGrad = ctx.createLinearGradient(0, floorY, 0, HEIGHT);
-    floorGrad.addColorStop(0, `rgba(0, 200, 180, ${0.15 + progress * 0.1})`);
-    floorGrad.addColorStop(0.3, `rgba(0, 150, 130, ${0.08})`);
-    floorGrad.addColorStop(1, 'rgba(0, 80, 80, 0.02)');
+    floorGrad.addColorStop(0, `rgba(200, 60, 40, ${0.12 + progress * 0.06})`);
+    floorGrad.addColorStop(0.4, `rgba(150, 30, 30, ${0.08})`);
+    floorGrad.addColorStop(1, 'rgba(60, 0, 0, 0.04)');
     ctx.fillStyle = floorGrad;
     ctx.fillRect(0, floorY, WIDTH, HEIGHT - floorY);
-    // Grid lines on floor
-    ctx.strokeStyle = `rgba(0, 255, 200, ${0.12 + Math.sin(animTime * 2) * 0.04})`;
+    // Grid lines on floor (red/orange warning)
+    ctx.strokeStyle = `rgba(255, 80, 60, ${0.12 + Math.sin(animTime * 2) * 0.04})`;
     ctx.lineWidth = 1;
     const gridOffset = (distance * 0.5) % 40;
     for (let gx = -gridOffset; gx < WIDTH + 40; gx += 40) {
@@ -473,13 +516,27 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       ctx.lineTo(gx - 10, HEIGHT);
       ctx.stroke();
     }
-    // Horizontal floor line
-    ctx.strokeStyle = `rgba(0, 255, 200, ${0.3 + Math.sin(animTime * 3) * 0.1})`;
+    // Horizontal floor line (danger indicator)
+    ctx.strokeStyle = `rgba(255, 60, 40, ${0.35 + Math.sin(animTime * 4) * 0.15})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(0, floorY);
     ctx.lineTo(WIDTH, floorY);
     ctx.stroke();
+    // Warning chevrons
+    ctx.fillStyle = `rgba(255, 80, 40, ${0.08 + Math.sin(animTime * 3) * 0.03})`;
+    const chevOffset = (distance * 0.8) % 60;
+    for (let cx = -chevOffset; cx < WIDTH + 60; cx += 60) {
+      ctx.beginPath();
+      ctx.moveTo(cx, floorY + 4);
+      ctx.lineTo(cx + 15, floorY + 14);
+      ctx.lineTo(cx + 30, floorY + 4);
+      ctx.lineTo(cx + 25, floorY + 4);
+      ctx.lineTo(cx + 15, floorY + 10);
+      ctx.lineTo(cx + 5, floorY + 4);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // === ENERGY GRID CEILING ===
     const ceilY = 20;
@@ -575,6 +632,37 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     for (const obs of obstacles) {
       if (obs.x > WIDTH + 10 || obs.x + obs.w < -10) continue;
       drawObstacle(ctx, obs);
+    }
+
+    // === SPEED LINES (intensity scales with speed) ===
+    const speedFrac = (scrollSpeed - BASE_SCROLL_SPEED) / (MAX_SCROLL_SPEED - BASE_SCROLL_SPEED);
+    if (speedFrac > 0.2) {
+      const lineCount = Math.floor(speedFrac * 12);
+      ctx.strokeStyle = `rgba(200, 230, 255, ${speedFrac * 0.15})`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < lineCount; i++) {
+        const ly = ((i * 97 + Math.floor(animTime * 3) * 41) % HEIGHT);
+        const lx = ((i * 173 + Math.floor(animTime * 60) * 7) % (WIDTH * 0.6)) + WIDTH * 0.2;
+        const len = 30 + speedFrac * 40;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx - len, ly);
+        ctx.stroke();
+      }
+    }
+
+    // === PLAYER MOTION TRAIL ===
+    if (!gameOver) {
+      const trailCount = thrusting ? 5 : 3;
+      for (let t = 1; t <= trailCount; t++) {
+        const alpha = (1 - t / (trailCount + 1)) * 0.15;
+        const trailX = PLAYER_X - t * (scrollSpeed * 0.008);
+        const trailY = playerY + t * (playerVY * 0.006);
+        ctx.fillStyle = invincibleTimer > 0
+          ? `rgba(255, 200, 0, ${alpha})`
+          : `rgba(0, 180, 255, ${alpha})`;
+        ctx.fillRect(trailX + 4, trailY + 18, 28, 26);
+      }
     }
 
     // Collectibles
