@@ -136,6 +136,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let dialogActive = true;
   let dialogPage = 0;
   let dialogAlpha = 0;
+  let dialogCooldown = 0.3; // prevent immediate advance on first frame
 
   let health = MAX_HEALTH;
   let score = 0;
@@ -150,7 +151,6 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let playerH = 44;
   let thrusting = false;
   let wasThrusting = false;
-  let thrustSfxCooldown = 0;
 
   let invincibleTimer = 0;
   let damageCooldown = 0;
@@ -198,11 +198,14 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     // Dialog
     if (dialogActive) {
       dialogAlpha = Math.min(1, dialogAlpha + dt * 3);
-      if (keys[' '] || keys.enter) {
+      if (dialogCooldown > 0) dialogCooldown -= dt;
+      if (dialogCooldown <= 0 && (keys[' '] || keys.enter)) {
         keys[' '] = false;
         keys.enter = false;
         sfxMenuSelect();
         dialogPage++;
+        dialogAlpha = 0;
+        dialogCooldown = 0.35; // debounce between pages
         if (dialogPage >= jamesDialog.length) {
           dialogActive = false;
           initAudio();
@@ -280,16 +283,14 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     thrusting = !!(keys.arrowup || keys.w || keys[' ']);
     if (thrusting) {
       playerVY += THRUST_FORCE * dt;
-      // Play thrust sound on start or periodically
-      if (!wasThrusting || thrustSfxCooldown <= 0) {
+      // Play thrust sound only on initial press
+      if (!wasThrusting) {
         sfxThrust();
-        thrustSfxCooldown = 0.12;
       }
     } else {
       playerVY += GRAVITY * dt;
     }
     wasThrusting = thrusting;
-    if (thrustSfxCooldown > 0) thrustSfxCooldown -= dt;
     playerVY = Math.max(-MAX_VY, Math.min(MAX_VY, playerVY));
     playerY += playerVY * dt;
 
@@ -770,51 +771,139 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
-    // === CLARITY BEACON (destination visual) ===
+    // === CLARITY BEACON (destination visual — major landmark) ===
     if (progress > 0.7) {
       const beaconIntensity = (progress - 0.7) / 0.3; // 0→1 from 70% to 100%
-      const beaconX = WIDTH - 40 + (1 - beaconIntensity) * 60; // slides in from right
-      const beaconY = HEIGHT / 2 - 20;
-      const beaconSize = 20 + beaconIntensity * 40;
+      const beaconX = WIDTH - 50 + (1 - beaconIntensity) * 80; // slides in from right
+      const beaconY = HEIGHT / 2 - 30;
+      const beaconSize = 30 + beaconIntensity * 60;
       const beaconPulse = 0.6 + Math.sin(animTime * 3) * 0.4;
+      const beaconSpin = animTime * 0.8;
 
-      // Outer glow
-      const bGrad = ctx.createRadialGradient(beaconX, beaconY, 0, beaconX, beaconY, beaconSize * 2);
-      bGrad.addColorStop(0, `rgba(0, 255, 200, ${beaconIntensity * beaconPulse * 0.3})`);
-      bGrad.addColorStop(0.5, `rgba(0, 200, 255, ${beaconIntensity * beaconPulse * 0.15})`);
-      bGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = bGrad;
-      ctx.fillRect(beaconX - beaconSize * 2, beaconY - beaconSize * 2, beaconSize * 4, beaconSize * 4);
+      // === BEACON COLUMN (energy pillar from floor to ceiling) ===
+      if (beaconIntensity > 0.3) {
+        const colAlpha = (beaconIntensity - 0.3) * 0.15;
+        const colGrad = ctx.createLinearGradient(beaconX, 0, beaconX, HEIGHT);
+        colGrad.addColorStop(0, `rgba(0, 255, 200, ${colAlpha * 0.3})`);
+        colGrad.addColorStop(0.3, `rgba(0, 255, 200, ${colAlpha})`);
+        colGrad.addColorStop(0.5, `rgba(100, 255, 220, ${colAlpha * 1.5})`);
+        colGrad.addColorStop(0.7, `rgba(0, 255, 200, ${colAlpha})`);
+        colGrad.addColorStop(1, `rgba(0, 255, 200, ${colAlpha * 0.3})`);
+        ctx.fillStyle = colGrad;
+        ctx.fillRect(beaconX - 6, 0, 12, HEIGHT);
+      }
 
-      // Core beacon
+      // === OUTER AURA (large atmospheric glow) ===
+      const auraGrad = ctx.createRadialGradient(beaconX, beaconY, 0, beaconX, beaconY, beaconSize * 3);
+      auraGrad.addColorStop(0, `rgba(0, 255, 200, ${beaconIntensity * beaconPulse * 0.2})`);
+      auraGrad.addColorStop(0.3, `rgba(0, 200, 255, ${beaconIntensity * beaconPulse * 0.1})`);
+      auraGrad.addColorStop(0.6, `rgba(50, 150, 255, ${beaconIntensity * 0.05})`);
+      auraGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = auraGrad;
       ctx.beginPath();
-      ctx.arc(beaconX, beaconY, beaconSize * 0.3 * beaconPulse, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(200, 255, 240, ${beaconIntensity * 0.9})`;
+      ctx.arc(beaconX, beaconY, beaconSize * 3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner bright point
+      // === ROTATING RING SYSTEM ===
+      ctx.strokeStyle = `rgba(0, 255, 200, ${beaconIntensity * 0.5})`;
+      ctx.lineWidth = 2;
+      // Outer ring
       ctx.beginPath();
-      ctx.arc(beaconX, beaconY, beaconSize * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${beaconIntensity})`;
-      ctx.fill();
-
-      // Rays
-      ctx.strokeStyle = `rgba(0, 255, 200, ${beaconIntensity * beaconPulse * 0.5})`;
+      ctx.ellipse(beaconX, beaconY, beaconSize * 0.9, beaconSize * 0.3, beaconSpin, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner ring (counter-rotate)
+      ctx.strokeStyle = `rgba(100, 255, 240, ${beaconIntensity * 0.6})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(beaconX, beaconY, beaconSize * 0.6, beaconSize * 0.2, -beaconSpin * 1.3, 0, Math.PI * 2);
+      ctx.stroke();
+      // Third ring
+      ctx.strokeStyle = `rgba(200, 255, 250, ${beaconIntensity * 0.4})`;
       ctx.lineWidth = 1;
-      for (let r = 0; r < 6; r++) {
-        const angle = (r / 6) * Math.PI * 2 + animTime * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(beaconX, beaconY, beaconSize * 1.1, beaconSize * 0.15, beaconSpin * 0.7 + 1, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // === CORE ORB (multi-layered) ===
+      // Outer orb glow
+      const orbGrad = ctx.createRadialGradient(beaconX, beaconY, 0, beaconX, beaconY, beaconSize * 0.4);
+      orbGrad.addColorStop(0, `rgba(255, 255, 255, ${beaconIntensity * 0.9})`);
+      orbGrad.addColorStop(0.3, `rgba(150, 255, 230, ${beaconIntensity * 0.7})`);
+      orbGrad.addColorStop(0.7, `rgba(0, 200, 180, ${beaconIntensity * 0.4})`);
+      orbGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = orbGrad;
+      ctx.beginPath();
+      ctx.arc(beaconX, beaconY, beaconSize * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core bright center
+      ctx.beginPath();
+      ctx.arc(beaconX, beaconY, beaconSize * 0.12 * beaconPulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // === RADIATING RAYS (animated) ===
+      const rayCount = 12;
+      for (let r = 0; r < rayCount; r++) {
+        const angle = (r / rayCount) * Math.PI * 2 + beaconSpin;
+        const rayLength = beaconSize * (0.8 + Math.sin(animTime * 4 + r * 1.5) * 0.3);
+        const rayAlpha = beaconIntensity * (0.3 + Math.sin(animTime * 3 + r) * 0.15);
+        ctx.strokeStyle = `rgba(0, 255, 200, ${rayAlpha})`;
+        ctx.lineWidth = r % 3 === 0 ? 2 : 1;
         ctx.beginPath();
-        ctx.moveTo(beaconX + Math.cos(angle) * beaconSize * 0.4, beaconY + Math.sin(angle) * beaconSize * 0.4);
-        ctx.lineTo(beaconX + Math.cos(angle) * beaconSize * 1.2, beaconY + Math.sin(angle) * beaconSize * 1.2);
+        ctx.moveTo(
+          beaconX + Math.cos(angle) * beaconSize * 0.3,
+          beaconY + Math.sin(angle) * beaconSize * 0.3
+        );
+        ctx.lineTo(
+          beaconX + Math.cos(angle) * rayLength,
+          beaconY + Math.sin(angle) * rayLength
+        );
         ctx.stroke();
       }
 
-      // Label (when close enough)
-      if (progress > 0.85) {
-        ctx.fillStyle = `rgba(200, 255, 240, ${beaconIntensity * beaconPulse})`;
-        ctx.font = 'bold 11px monospace';
+      // === ORBITING PARTICLES ===
+      for (let p = 0; p < 8; p++) {
+        const pAngle = beaconSpin * 2 + (p / 8) * Math.PI * 2;
+        const pDist = beaconSize * (0.5 + Math.sin(animTime * 2 + p) * 0.2);
+        const px = beaconX + Math.cos(pAngle) * pDist;
+        const py = beaconY + Math.sin(pAngle) * pDist * 0.6;
+        const pSize = 2 + Math.sin(animTime * 5 + p * 2) * 1;
+        ctx.fillStyle = `rgba(200, 255, 240, ${beaconIntensity * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(px, py, pSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // === DIAMOND / CRYSTAL SHAPE (at high intensity) ===
+      if (beaconIntensity > 0.5) {
+        const crystalAlpha = (beaconIntensity - 0.5) * 2;
+        const cSize = beaconSize * 0.25;
+        ctx.fillStyle = `rgba(200, 255, 240, ${crystalAlpha * 0.5 * beaconPulse})`;
+        ctx.beginPath();
+        ctx.moveTo(beaconX, beaconY - cSize);
+        ctx.lineTo(beaconX + cSize * 0.6, beaconY);
+        ctx.lineTo(beaconX, beaconY + cSize);
+        ctx.lineTo(beaconX - cSize * 0.6, beaconY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 255, 255, ${crystalAlpha * 0.6})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // === LABEL ===
+      if (progress > 0.82) {
+        const labelAlpha = beaconIntensity * beaconPulse;
+        ctx.fillStyle = `rgba(200, 255, 240, ${labelAlpha})`;
+        ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('CLARITY BEACON', beaconX, beaconY + beaconSize + 16);
+        ctx.fillText('CLARITY BEACON', beaconX, beaconY + beaconSize * 1.3 + 10);
+        if (progress > 0.92) {
+          ctx.fillStyle = `rgba(150, 255, 220, ${labelAlpha * 0.7})`;
+          ctx.font = '10px monospace';
+          ctx.fillText('ALMOST THERE', beaconX, beaconY + beaconSize * 1.3 + 26);
+        }
         ctx.textAlign = 'left';
       }
     }
@@ -883,50 +972,205 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
   // === DRAW HELPERS ===
   function drawJames(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    // Body (jacket)
-    ctx.fillStyle = '#1a3a5a';
-    ctx.fillRect(x + 8, y + 26, 24, 28);
-    ctx.fillStyle = '#2a5a8a';
-    ctx.fillRect(x + 10, y + 28, 20, 24);
-    // Collar
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x + 16, y + 26, 8, 4);
-    // Head
+    // High-detail James portrait for dialog screens
+    // Scale up: draw at ~80px wide, ~90px tall
+    const cx = x + 40; // center x
+
+    // === BODY / JACKET ===
+    // Shoulders & torso (smart casual blazer)
+    ctx.fillStyle = '#1a2d4a';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 72, 32, 18, 0, Math.PI, 0, true);
+    ctx.fill();
+    ctx.fillStyle = '#1a2d4a';
+    ctx.fillRect(cx - 30, y + 55, 60, 35);
+    // Blazer lapels
+    ctx.fillStyle = '#253d5a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, y + 52);
+    ctx.lineTo(cx - 18, y + 75);
+    ctx.lineTo(cx - 8, y + 75);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 8, y + 52);
+    ctx.lineTo(cx + 18, y + 75);
+    ctx.lineTo(cx + 8, y + 75);
+    ctx.closePath();
+    ctx.fill();
+    // Shirt underneath
+    ctx.fillStyle = '#dde8f0';
+    ctx.fillRect(cx - 7, y + 52, 14, 24);
+    // Tie (subtle)
+    ctx.fillStyle = '#2a6090';
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, y + 52);
+    ctx.lineTo(cx + 3, y + 52);
+    ctx.lineTo(cx + 2, y + 68);
+    ctx.lineTo(cx, y + 72);
+    ctx.lineTo(cx - 2, y + 68);
+    ctx.closePath();
+    ctx.fill();
+
+    // === NECK ===
     ctx.fillStyle = '#e8c8a0';
-    ctx.fillRect(x + 10, y + 10, 20, 16);
-    // Hair
-    ctx.fillStyle = '#4a3520';
-    ctx.fillRect(x + 9, y + 7, 22, 7);
-    ctx.fillRect(x + 10, y + 5, 18, 4);
-    // Hat stack! (he wears many)
-    ctx.fillStyle = '#ff8800';
-    ctx.fillRect(x + 6, y + 1, 28, 6);
-    ctx.fillRect(x + 10, y - 5, 20, 7);
-    ctx.fillStyle = '#cc6600';
-    ctx.fillRect(x + 12, y - 3, 16, 2);
-    // Second hat on top
-    ctx.fillStyle = '#44aa44';
-    ctx.fillRect(x + 8, y - 9, 24, 5);
-    ctx.fillRect(x + 12, y - 14, 16, 6);
-    // Eyes
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + 14, y + 16, 4, 4);
-    ctx.fillRect(x + 22, y + 16, 4, 4);
+    ctx.fillRect(cx - 6, y + 46, 12, 10);
+
+    // === HEAD (oval) ===
+    ctx.fillStyle = '#e8c8a0';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 32, 18, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Jaw definition
+    ctx.fillStyle = '#dbb890';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 42, 14, 8, 0, 0, Math.PI);
+    ctx.fill();
+
+    // === HAIR ===
+    ctx.fillStyle = '#3a2810';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 22, 19, 14, 0, Math.PI + 0.3, -0.3);
+    ctx.fill();
+    // Side hair
+    ctx.fillRect(cx - 19, y + 22, 6, 14);
+    ctx.fillRect(cx + 13, y + 22, 6, 12);
+    // Hair detail/texture
+    ctx.strokeStyle = '#2a1a08';
+    ctx.lineWidth = 1;
+    for (let h = 0; h < 5; h++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 12 + h * 6, y + 14);
+      ctx.quadraticCurveTo(cx - 10 + h * 6, y + 20, cx - 8 + h * 6, y + 14);
+      ctx.stroke();
+    }
+
+    // === EYES ===
+    // Eye whites
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, y + 32, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7, y + 32, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Irises
+    ctx.fillStyle = '#3a6020';
+    ctx.beginPath();
+    ctx.arc(cx - 7, y + 33, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, y + 33, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(cx - 7, y + 33, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, y + 33, 1.5, 0, Math.PI * 2);
+    ctx.fill();
     // Eye shine
     ctx.fillStyle = '#fff';
-    ctx.fillRect(x + 15, y + 17, 2, 2);
-    ctx.fillRect(x + 23, y + 17, 2, 2);
-    // Smile
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + 16, y + 22, 8, 2);
-    ctx.fillRect(x + 15, y + 21, 2, 2);
-    ctx.fillRect(x + 23, y + 21, 2, 2);
-    // Swiss army knife in hand
+    ctx.beginPath();
+    ctx.arc(cx - 8, y + 32, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6, y + 32, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyebrows
+    ctx.strokeStyle = '#3a2810';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 12, y + 27);
+    ctx.quadraticCurveTo(cx - 7, y + 25, cx - 2, y + 27);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 2, y + 27);
+    ctx.quadraticCurveTo(cx + 7, y + 25, cx + 12, y + 27);
+    ctx.stroke();
+
+    // === NOSE ===
+    ctx.strokeStyle = '#c0a080';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, y + 32);
+    ctx.lineTo(cx - 2, y + 38);
+    ctx.lineTo(cx + 1, y + 38);
+    ctx.stroke();
+
+    // === MOUTH (friendly smile) ===
+    ctx.strokeStyle = '#8a4a30';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, y + 41, 6, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    // === HAT STACK (signature look) ===
+    // Hat 1: Orange project manager hat
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 13, 24, 4, 0, Math.PI, 0, true);
+    ctx.fill();
+    ctx.fillStyle = '#ee7700';
+    ctx.fillRect(cx - 14, y + 3, 28, 11);
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 3, 14, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff9922';
+    ctx.fill();
+    // Band
+    ctx.fillStyle = '#cc5500';
+    ctx.fillRect(cx - 14, y + 9, 28, 3);
+
+    // Hat 2: Green dev hat stacked on top
+    ctx.fillStyle = '#33aa55';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 2, 18, 3, 0, Math.PI, 0, true);
+    ctx.fill();
+    ctx.fillStyle = '#2a8844';
+    ctx.fillRect(cx - 10, y - 7, 20, 10);
+    ctx.beginPath();
+    ctx.ellipse(cx, y - 7, 10, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#44bb66';
+    ctx.fill();
+    // Band
+    ctx.fillStyle = '#226633';
+    ctx.fillRect(cx - 10, y - 3, 20, 2);
+
+    // Hat 3: Tiny purple hat on top (CS hat)
+    ctx.fillStyle = '#7744aa';
+    ctx.fillRect(cx - 6, y - 14, 12, 7);
+    ctx.fillStyle = '#9955cc';
+    ctx.beginPath();
+    ctx.ellipse(cx, y - 7, 9, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx, y - 14, 6, 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#aa66dd';
+    ctx.fill();
+
+    // === ARMS (one holding Swiss army knife) ===
+    ctx.fillStyle = '#1a2d4a';
+    // Left arm
+    ctx.fillRect(cx - 30, y + 58, 8, 24);
+    ctx.fillStyle = '#e8c8a0';
+    ctx.fillRect(cx - 30, y + 78, 8, 6);
+    // Right arm (holding knife)
+    ctx.fillStyle = '#1a2d4a';
+    ctx.fillRect(cx + 22, y + 58, 8, 20);
+    ctx.fillStyle = '#e8c8a0';
+    ctx.fillRect(cx + 22, y + 74, 8, 6);
+    // Swiss army knife
     ctx.fillStyle = '#cc0000';
-    ctx.fillRect(x + 32, y + 32, 6, 14);
+    ctx.fillRect(cx + 31, y + 68, 5, 14);
     ctx.fillStyle = '#eee';
-    ctx.fillRect(x + 33, y + 30, 4, 3);
-    ctx.fillRect(x + 38, y + 36, 4, 2);
+    ctx.fillRect(cx + 32, y + 66, 3, 4);
+    ctx.fillRect(cx + 36, y + 72, 4, 2);
+    ctx.fillRect(cx + 36, y + 76, 3, 2);
+    // Knife cross emblem
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx + 32, y + 73, 3, 1);
+    ctx.fillRect(cx + 33, y + 72, 1, 3);
   }
 
   function drawSonia(ctx: CanvasRenderingContext2D, x: number, y: number) {
