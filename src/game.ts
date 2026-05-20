@@ -371,9 +371,9 @@ export function mountGame(container: HTMLElement): void {
 
   // === CHECKPOINTS ===
   const checkpoints: Checkpoint[] = [
-    { x: 900, y: 402, activated: false, spinTimer: 0 },
+    { x: 980, y: 402, activated: false, spinTimer: 0 },
     { x: 1800, y: 402, activated: false, spinTimer: 0 },
-    { x: 2700, y: 402, activated: false, spinTimer: 0 },
+    { x: 2770, y: 402, activated: false, spinTimer: 0 },
     { x: 3600, y: 402, activated: false, spinTimer: 0 },
     { x: 4800, y: 402, activated: false, spinTimer: 0 },
     { x: 5330, y: 402, activated: false, spinTimer: 0 },
@@ -2699,14 +2699,17 @@ export function mountGame(container: HTMLElement): void {
 
   const draw = () => {
     const tintStrength = clamp(state.insight / REQUIRED_SIGS, 0, 1) * 0.65;
+    // Snap camera to whole pixels for rendering to prevent sub-pixel jitter
+    const realCameraX = cameraX;
+    cameraX = Math.round(cameraX);
 
     // Phase 1: Rich parallax background
     drawSky(tintStrength);
     drawMountains(tintStrength);
 
-    // Apply vertical camera offset for world elements
+    // Apply vertical camera offset for world elements (round to avoid sub-pixel jitter)
     ctx.save();
-    ctx.translate(0, -cameraY);
+    ctx.translate(0, -Math.round(cameraY));
 
     // Phase 2: Textured platforms
     for (const platform of platforms) {
@@ -3621,6 +3624,9 @@ export function mountGame(container: HTMLElement): void {
       ctx.fillText('H: toggle hints • L: leaderboard • Q: quit', WIDTH - 12, HEIGHT - 8);
       ctx.textAlign = 'left';
     }
+
+    // Restore real camera position for next update
+    cameraX = realCameraX;
   };
 
   const frame = (now: number) => {
