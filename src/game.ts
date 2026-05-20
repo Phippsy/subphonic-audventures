@@ -2004,8 +2004,8 @@ export function mountGame(container: HTMLElement): void {
     }
   };
 
-  const drawSig = (sx: number, sy: number) => {
-    const bob = Math.sin(animTime * 4 + sx) * 3;
+  const drawSig = (sx: number, sy: number, worldX: number) => {
+    const bob = Math.sin(animTime * 4 + worldX * 0.1) * 3;
     const cy = sy + 9 + bob;
 
     // Outer glow
@@ -2753,7 +2753,7 @@ export function mountGame(container: HTMLElement): void {
       if (sig.collected) continue;
       const sx = sig.x - cameraX;
       if (sx < -30 || sx > WIDTH + 30) continue;
-      drawSig(sx, sig.y);
+      drawSig(sx, sig.y, sig.x);
     }
 
     // Enemies
