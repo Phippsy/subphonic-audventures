@@ -384,32 +384,130 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     const ctx = ctx2!;
     const progress = Math.min(distance / totalDistance, 1);
 
-    // Background - dark with scrolling noise pattern
-    ctx.fillStyle = '#0a0a14';
+    // === BACKGROUND: Deep space gradient with shifting hue ===
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    const hueShift = progress * 30;
+    bgGrad.addColorStop(0, `hsl(${260 + hueShift}, 40%, 5%)`);
+    bgGrad.addColorStop(0.3, `hsl(${240 + hueShift}, 35%, 8%)`);
+    bgGrad.addColorStop(0.7, `hsl(${220 + hueShift}, 30%, 6%)`);
+    bgGrad.addColorStop(1, `hsl(${200 + hueShift}, 40%, 4%)`);
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Scrolling background lines (static field effect)
-    ctx.strokeStyle = `rgba(80, 40, 100, ${0.15 + progress * 0.1})`;
+    // === PARALLAX STAR LAYER 1 (far, slow) ===
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 40; i++) {
+      const sx = ((i * 179 + 50) - (distance * 0.02)) % WIDTH;
+      const sy = (i * 97 + 20) % HEIGHT;
+      ctx.fillRect(sx < 0 ? sx + WIDTH : sx, sy, 1, 1);
+    }
+
+    // === PARALLAX STAR LAYER 2 (mid, medium) ===
+    ctx.fillStyle = 'rgba(200, 180, 255, 0.4)';
+    for (let i = 0; i < 30; i++) {
+      const sx = ((i * 211 + 80) - (distance * 0.06)) % WIDTH;
+      const sy = (i * 131 + 10) % HEIGHT;
+      const size = i % 4 === 0 ? 2 : 1;
+      ctx.fillRect(sx < 0 ? sx + WIDTH : sx, sy, size, size);
+    }
+
+    // === PARALLAX STAR LAYER 3 (near, fast twinkle) ===
+    for (let i = 0; i < 15; i++) {
+      const sx = ((i * 277 + 30) - (distance * 0.12)) % WIDTH;
+      const sy = (i * 163 + 40) % HEIGHT;
+      const twinkle = 0.3 + Math.sin(animTime * 3 + i * 1.7) * 0.3;
+      ctx.fillStyle = `rgba(255, 220, 255, ${twinkle})`;
+      ctx.fillRect(sx < 0 ? sx + WIDTH : sx, sy, 2, 2);
+    }
+
+    // === NEBULA CLOUDS (parallax, atmospheric) ===
+    ctx.globalAlpha = 0.04 + progress * 0.02;
+    for (let i = 0; i < 5; i++) {
+      const nx = ((i * 400 + 100) - (distance * 0.04)) % (WIDTH + 200) - 100;
+      const ny = 60 + (i * 137) % (HEIGHT - 120);
+      const nw = 120 + (i % 3) * 80;
+      const nh = 40 + (i % 2) * 30;
+      const nebGrad = ctx.createRadialGradient(nx + nw / 2, ny + nh / 2, 0, nx + nw / 2, ny + nh / 2, nw / 2);
+      nebGrad.addColorStop(0, i % 2 === 0 ? 'rgba(150, 50, 200, 0.8)' : 'rgba(50, 100, 200, 0.8)');
+      nebGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = nebGrad;
+      ctx.beginPath();
+      ctx.ellipse(nx + nw / 2, ny + nh / 2, nw / 2, nh / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // === ENERGY GRID FLOOR ===
+    const floorY = HEIGHT - 24;
+    const floorGrad = ctx.createLinearGradient(0, floorY, 0, HEIGHT);
+    floorGrad.addColorStop(0, `rgba(0, 200, 180, ${0.15 + progress * 0.1})`);
+    floorGrad.addColorStop(0.3, `rgba(0, 150, 130, ${0.08})`);
+    floorGrad.addColorStop(1, 'rgba(0, 80, 80, 0.02)');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floorY, WIDTH, HEIGHT - floorY);
+    // Grid lines on floor
+    ctx.strokeStyle = `rgba(0, 255, 200, ${0.12 + Math.sin(animTime * 2) * 0.04})`;
     ctx.lineWidth = 1;
-    const lineOffset = (distance * 0.3) % 60;
-    for (let x = -lineOffset; x < WIDTH + 60; x += 60) {
+    const gridOffset = (distance * 0.5) % 40;
+    for (let gx = -gridOffset; gx < WIDTH + 40; gx += 40) {
+      ctx.beginPath();
+      ctx.moveTo(gx, floorY);
+      ctx.lineTo(gx - 10, HEIGHT);
+      ctx.stroke();
+    }
+    // Horizontal floor line
+    ctx.strokeStyle = `rgba(0, 255, 200, ${0.3 + Math.sin(animTime * 3) * 0.1})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, floorY);
+    ctx.lineTo(WIDTH, floorY);
+    ctx.stroke();
+
+    // === ENERGY GRID CEILING ===
+    const ceilY = 20;
+    const ceilGrad = ctx.createLinearGradient(0, 0, 0, ceilY);
+    ceilGrad.addColorStop(0, 'rgba(0, 80, 80, 0.02)');
+    ceilGrad.addColorStop(0.7, `rgba(0, 150, 130, ${0.06})`);
+    ceilGrad.addColorStop(1, `rgba(0, 200, 180, ${0.1 + progress * 0.08})`);
+    ctx.fillStyle = ceilGrad;
+    ctx.fillRect(0, 0, WIDTH, ceilY);
+    ctx.strokeStyle = `rgba(0, 255, 200, ${0.2 + Math.sin(animTime * 3 + 1) * 0.08})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, ceilY);
+    ctx.lineTo(WIDTH, ceilY);
+    ctx.stroke();
+
+    // === SCROLLING DIAGONAL INTERFERENCE LINES ===
+    ctx.strokeStyle = `rgba(100, 60, 140, ${0.06 + progress * 0.04})`;
+    ctx.lineWidth = 1;
+    const lineOffset = (distance * 0.3) % 80;
+    for (let x = -lineOffset; x < WIDTH + 80; x += 80) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x - 30, HEIGHT);
+      ctx.lineTo(x - 40, HEIGHT);
       ctx.stroke();
     }
 
-    // Horizontal scan lines
-    ctx.fillStyle = `rgba(100, 50, 120, ${0.04 + progress * 0.03})`;
-    for (let y = 0; y < HEIGHT; y += 4) {
+    // === SUBTLE SCANLINES ===
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+    for (let y = 0; y < HEIGHT; y += 3) {
       ctx.fillRect(0, y, WIDTH, 1);
     }
 
-    // Progress bar (top)
-    ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
-    ctx.fillRect(0, 0, WIDTH * progress, 3);
-    ctx.fillStyle = '#00ff00';
-    ctx.fillRect(WIDTH * progress - 2, 0, 4, 3);
+    // === PROGRESS BAR (stylized) ===
+    const barY = 4;
+    const barH = 3;
+    ctx.fillStyle = 'rgba(0, 255, 150, 0.08)';
+    ctx.fillRect(0, barY, WIDTH, barH);
+    const progGrad = ctx.createLinearGradient(0, barY, WIDTH * progress, barY);
+    progGrad.addColorStop(0, 'rgba(0, 255, 150, 0.4)');
+    progGrad.addColorStop(1, '#00ff88');
+    ctx.fillStyle = progGrad;
+    ctx.fillRect(0, barY, WIDTH * progress, barH);
+    // Beacon indicator at end
+    ctx.fillStyle = `rgba(0, 255, 150, ${0.4 + Math.sin(animTime * 4) * 0.2})`;
+    ctx.fillRect(WIDTH - 6, barY - 1, 6, barH + 2);
 
     // Dialog overlay
     if (dialogActive) {
@@ -477,43 +575,92 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       drawPlayerRunner(ctx, PLAYER_X, playerY, thrusting, invincibleTimer > 0);
     }
 
-    // Thrust trail
+    // === THRUST EXHAUST (multi-layered) ===
     if (thrusting) {
-      ctx.fillStyle = `rgba(0, 200, 255, ${0.3 + Math.sin(animTime * 20) * 0.15})`;
-      for (let i = 0; i < 5; i++) {
-        const tx = PLAYER_X - 5 - Math.random() * 15;
-        const ty = playerY + playerH - 5 + (Math.random() - 0.5) * 10;
-        ctx.fillRect(tx, ty, 3 + Math.random() * 4, 2 + Math.random() * 3);
+      // Core flame
+      for (let i = 0; i < 8; i++) {
+        const tx = PLAYER_X - 2 - Math.random() * 20;
+        const ty = playerY + playerH - 2 + (Math.random() - 0.5) * 8;
+        const size = 2 + Math.random() * 4;
+        const alpha = 0.4 + Math.random() * 0.3;
+        ctx.fillStyle = `rgba(0, 200, 255, ${alpha})`;
+        ctx.fillRect(tx, ty, size, size * 0.6);
       }
+      // Outer glow
+      const glowGrad = ctx.createRadialGradient(
+        PLAYER_X - 8, playerY + playerH + 2, 0,
+        PLAYER_X - 8, playerY + playerH + 2, 18
+      );
+      glowGrad.addColorStop(0, 'rgba(0, 180, 255, 0.2)');
+      glowGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(PLAYER_X - 8, playerY + playerH + 2, 18, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Invincibility shield
+    // === INVINCIBILITY SHIELD (layered glow) ===
     if (invincibleTimer > 0) {
-      const shimmer = 0.3 + Math.sin(animTime * 8) * 0.15;
-      ctx.strokeStyle = `rgba(255, 200, 0, ${shimmer})`;
+      const cx = PLAYER_X + playerW / 2;
+      const cy = playerY + playerH / 2;
+      const shimmer = animTime * 8;
+      // Outer glow
+      const shieldGrad = ctx.createRadialGradient(cx, cy, playerW * 0.4, cx, cy, playerW * 1.1);
+      shieldGrad.addColorStop(0, 'rgba(255, 200, 0, 0.0)');
+      shieldGrad.addColorStop(0.6, `rgba(255, 200, 0, ${0.08 + Math.sin(shimmer) * 0.04})`);
+      shieldGrad.addColorStop(1, 'rgba(255, 200, 0, 0.0)');
+      ctx.fillStyle = shieldGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, playerW * 1.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Ring
+      ctx.strokeStyle = `rgba(255, 220, 50, ${0.5 + Math.sin(shimmer) * 0.2})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(PLAYER_X + playerW / 2, playerY + playerH / 2, playerW * 0.8, 0, Math.PI * 2);
+      ctx.arc(cx, cy, playerW * 0.85, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = `rgba(255, 200, 0, ${shimmer * 0.2})`;
-      ctx.fill();
+      // Sparkles
+      for (let s = 0; s < 4; s++) {
+        const angle = shimmer * 0.5 + s * Math.PI / 2;
+        const sparkX = cx + Math.cos(angle) * playerW * 0.85;
+        const sparkY = cy + Math.sin(angle) * playerW * 0.85;
+        ctx.fillStyle = `rgba(255, 255, 200, ${0.6 + Math.sin(shimmer + s) * 0.3})`;
+        ctx.fillRect(sparkX - 2, sparkY - 2, 4, 4);
+      }
     }
 
     // Particles
     for (const p of particles) {
-      ctx.globalAlpha = p.life * 2;
+      ctx.globalAlpha = Math.min(1, p.life * 2.5);
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      const pSize = 2 + p.life * 3;
+      ctx.fillRect(p.x - pSize / 2, p.y - pSize / 2, pSize, pSize);
     }
     ctx.globalAlpha = 1;
+
+    // === VIGNETTE ===
+    const vigGrad = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.3, WIDTH / 2, HEIGHT / 2, WIDTH * 0.7);
+    vigGrad.addColorStop(0, 'transparent');
+    vigGrad.addColorStop(1, `rgba(0, 0, 0, ${0.35 + progress * 0.15})`);
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     // HUD
     drawHUD(ctx, progress);
 
     // Game over overlay
     if (gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Static noise
+      ctx.globalAlpha = 0.06;
+      for (let i = 0; i < 80; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? '#ff3333' : '#220000';
+        ctx.fillRect(Math.random() * WIDTH, Math.random() * HEIGHT, Math.random() * 6 + 1, 2);
+      }
+      ctx.globalAlpha = 1;
+
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ff4444';
       ctx.font = 'bold 28px monospace';
@@ -557,211 +704,405 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
   // === DRAW HELPERS ===
   function drawJames(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    // Body
-    ctx.fillStyle = '#2a4a6a';
-    ctx.fillRect(x + 8, y + 24, 24, 30);
+    // Body (jacket)
+    ctx.fillStyle = '#1a3a5a';
+    ctx.fillRect(x + 8, y + 26, 24, 28);
+    ctx.fillStyle = '#2a5a8a';
+    ctx.fillRect(x + 10, y + 28, 20, 24);
+    // Collar
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 16, y + 26, 8, 4);
     // Head
     ctx.fillStyle = '#e8c8a0';
     ctx.fillRect(x + 10, y + 10, 20, 16);
     // Hair
     ctx.fillStyle = '#4a3520';
-    ctx.fillRect(x + 10, y + 8, 20, 6);
-    // Hat (he wears many!)
+    ctx.fillRect(x + 9, y + 7, 22, 7);
+    ctx.fillRect(x + 10, y + 5, 18, 4);
+    // Hat stack! (he wears many)
     ctx.fillStyle = '#ff8800';
-    ctx.fillRect(x + 6, y + 2, 28, 8);
-    ctx.fillRect(x + 12, y - 4, 16, 8);
+    ctx.fillRect(x + 6, y + 1, 28, 6);
+    ctx.fillRect(x + 10, y - 5, 20, 7);
+    ctx.fillStyle = '#cc6600';
+    ctx.fillRect(x + 12, y - 3, 16, 2);
+    // Second hat on top
+    ctx.fillStyle = '#44aa44';
+    ctx.fillRect(x + 8, y - 9, 24, 5);
+    ctx.fillRect(x + 12, y - 14, 16, 6);
     // Eyes
     ctx.fillStyle = '#222';
     ctx.fillRect(x + 14, y + 16, 4, 4);
     ctx.fillRect(x + 22, y + 16, 4, 4);
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 15, y + 17, 2, 2);
+    ctx.fillRect(x + 23, y + 17, 2, 2);
     // Smile
     ctx.fillStyle = '#222';
     ctx.fillRect(x + 16, y + 22, 8, 2);
+    ctx.fillRect(x + 15, y + 21, 2, 2);
+    ctx.fillRect(x + 23, y + 21, 2, 2);
     // Swiss army knife in hand
     ctx.fillStyle = '#cc0000';
-    ctx.fillRect(x + 32, y + 30, 6, 12);
-    ctx.fillStyle = '#ccc';
-    ctx.fillRect(x + 33, y + 28, 2, 4);
+    ctx.fillRect(x + 32, y + 32, 6, 14);
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 33, y + 30, 4, 3);
+    ctx.fillRect(x + 38, y + 36, 4, 2);
   }
 
   function drawSonia(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    // Simple Sonia at smaller scale
-    ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(x + 8, y + 22, 20, 28);
+    // Body (flight suit)
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(x + 8, y + 24, 20, 26);
+    ctx.fillStyle = '#2a2a5a';
+    ctx.fillRect(x + 10, y + 26, 16, 22);
+    // Accent stripe
+    ctx.fillStyle = '#00ccaa';
+    ctx.fillRect(x + 10, y + 26, 2, 22);
+    // Head
     ctx.fillStyle = '#e8c8a0';
     ctx.fillRect(x + 10, y + 10, 16, 14);
-    ctx.fillStyle = '#6a4a8a';
+    // Hair (purple, slightly wild)
+    ctx.fillStyle = '#7a4a9a';
     ctx.fillRect(x + 8, y + 4, 20, 10);
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + 13, y + 16, 3, 3);
-    ctx.fillRect(x + 20, y + 16, 3, 3);
+    ctx.fillRect(x + 6, y + 8, 4, 8);
+    ctx.fillRect(x + 26, y + 8, 4, 6);
+    // Goggles
+    ctx.fillStyle = '#00ccaa';
+    ctx.fillRect(x + 10, y + 14, 7, 5);
+    ctx.fillRect(x + 19, y + 14, 7, 5);
+    ctx.fillStyle = '#aaffee';
+    ctx.fillRect(x + 12, y + 15, 3, 3);
+    ctx.fillRect(x + 21, y + 15, 3, 3);
   }
 
   function drawPlayerRunner(ctx: CanvasRenderingContext2D, x: number, y: number, boosting: boolean, invincible: boolean) {
-    // Sonia with jetpack
-    const tilt = boosting ? -0.15 : 0.08;
+    const tilt = boosting ? -0.2 : 0.1;
     ctx.save();
     ctx.translate(x + playerW / 2, y + playerH / 2);
     ctx.rotate(tilt);
     ctx.translate(-(x + playerW / 2), -(y + playerH / 2));
 
-    // Jetpack
-    ctx.fillStyle = '#4a4a6a';
-    ctx.fillRect(x - 4, y + 10, 8, 24);
-    ctx.fillStyle = '#00aaff';
+    // Jetpack (more detailed)
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fillRect(x - 6, y + 8, 10, 28);
+    ctx.fillStyle = '#5a5a7a';
+    ctx.fillRect(x - 5, y + 9, 8, 3);
+    ctx.fillRect(x - 5, y + 32, 8, 3);
+    // Jetpack nozzle
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(x - 4, y + 36, 6, 4);
+    // Jetpack glow when boosting
     if (boosting) {
-      ctx.fillRect(x - 3, y + 34, 6, 4 + Math.sin(animTime * 30) * 2);
+      ctx.fillStyle = `rgba(0, 200, 255, ${0.6 + Math.sin(animTime * 25) * 0.3})`;
+      ctx.fillRect(x - 3, y + 40, 4, 3 + Math.sin(animTime * 30) * 2);
+      ctx.fillStyle = `rgba(100, 230, 255, ${0.4 + Math.sin(animTime * 20) * 0.2})`;
+      ctx.fillRect(x - 2, y + 42, 2, 2 + Math.sin(animTime * 35) * 1.5);
     }
 
-    // Body
-    ctx.fillStyle = invincible ? '#ffdd44' : '#2a2a4a';
-    ctx.fillRect(x + 6, y + 18, 24, 26);
+    // Body (flight suit)
+    const bodyColor = invincible ? '#aa8800' : '#1a1a3a';
+    const suitColor = invincible ? '#ffcc22' : '#2a2a5a';
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(x + 4, y + 18, 28, 26);
+    ctx.fillStyle = suitColor;
+    ctx.fillRect(x + 6, y + 20, 24, 22);
+    // Suit accent
+    ctx.fillStyle = invincible ? '#ffee88' : '#00ccaa';
+    ctx.fillRect(x + 6, y + 20, 2, 22);
+    ctx.fillRect(x + 28, y + 20, 2, 22);
+    // Belt
+    ctx.fillStyle = invincible ? '#ffdd00' : '#444';
+    ctx.fillRect(x + 6, y + 32, 24, 3);
+    ctx.fillStyle = invincible ? '#fff' : '#888';
+    ctx.fillRect(x + 16, y + 31, 4, 5);
+
     // Head
     ctx.fillStyle = '#e8c8a0';
-    ctx.fillRect(x + 8, y + 4, 18, 16);
-    // Hair
-    ctx.fillStyle = '#6a4a8a';
-    ctx.fillRect(x + 6, y, 22, 8);
+    ctx.fillRect(x + 8, y + 4, 20, 16);
+    // Hair (purple)
+    ctx.fillStyle = invincible ? '#dda0ff' : '#7a4a9a';
+    ctx.fillRect(x + 6, y, 24, 8);
+    ctx.fillRect(x + 4, y + 4, 5, 8);
+    ctx.fillRect(x + 27, y + 4, 5, 6);
     // Goggles
-    ctx.fillStyle = invincible ? '#ffaa00' : '#00ccaa';
-    ctx.fillRect(x + 8, y + 10, 8, 6);
-    ctx.fillRect(x + 18, y + 10, 8, 6);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = invincible ? '#ffdd00' : '#00ccaa';
+    ctx.fillRect(x + 8, y + 10, 9, 6);
+    ctx.fillRect(x + 19, y + 10, 9, 6);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 17, y + 10, 2, 6);
+    // Goggle shine
+    ctx.fillStyle = invincible ? '#fff' : '#aaffee';
     ctx.fillRect(x + 10, y + 12, 4, 3);
-    ctx.fillRect(x + 20, y + 12, 4, 3);
+    ctx.fillRect(x + 21, y + 12, 4, 3);
+    // Mouth (determined expression)
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 14, y + 18, 8, 1);
+
+    // Arms
+    ctx.fillStyle = suitColor;
+    ctx.fillRect(x + 30, y + 22, 6, 14);
+    ctx.fillStyle = '#e8c8a0';
+    ctx.fillRect(x + 30, y + 34, 6, 4);
 
     ctx.restore();
   }
 
   function drawObstacle(ctx: CanvasRenderingContext2D, obs: Obstacle) {
-    const pulse = 0.7 + Math.sin(animTime * 5 + obs.x * 0.05) * 0.3;
+    const pulse = 0.7 + Math.sin(animTime * 5 + obs.x * 0.03) * 0.3;
+    const glowAlpha = pulse * 0.4;
 
     switch (obs.type) {
-      case 'static-block':
-        ctx.fillStyle = `rgba(180, 40, 60, ${pulse * 0.8})`;
+      case 'static-block': {
+        // Outer glow
+        ctx.shadowColor = `rgba(255, 60, 80, ${glowAlpha})`;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = `rgba(140, 20, 40, ${pulse * 0.9})`;
         ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-        // Noise texture
-        ctx.fillStyle = `rgba(255, 100, 100, ${pulse * 0.3})`;
-        for (let i = 0; i < 6; i++) {
-          const nx = obs.x + ((i * 37 + obs.x) % obs.w);
-          const ny = obs.y + ((i * 23 + obs.y) % obs.h);
-          ctx.fillRect(nx, ny, 4, 4);
+        ctx.shadowBlur = 0;
+        // Inner gradient
+        const blockGrad = ctx.createLinearGradient(obs.x, obs.y, obs.x, obs.y + obs.h);
+        blockGrad.addColorStop(0, `rgba(220, 60, 80, ${pulse * 0.6})`);
+        blockGrad.addColorStop(0.5, `rgba(160, 30, 50, ${pulse * 0.8})`);
+        blockGrad.addColorStop(1, `rgba(100, 10, 30, ${pulse * 0.9})`);
+        ctx.fillStyle = blockGrad;
+        ctx.fillRect(obs.x + 2, obs.y + 2, obs.w - 4, obs.h - 4);
+        // Noise texture (animated)
+        ctx.fillStyle = `rgba(255, 100, 100, ${pulse * 0.4})`;
+        for (let i = 0; i < 10; i++) {
+          const nx = obs.x + ((i * 37 + Math.floor(animTime * 8) * 7) % Math.max(1, obs.w - 4));
+          const ny = obs.y + ((i * 23 + Math.floor(animTime * 5) * 11) % Math.max(1, obs.h - 4));
+          ctx.fillRect(nx, ny, 3, 3);
         }
+        // Border highlight
+        ctx.strokeStyle = `rgba(255, 80, 100, ${pulse * 0.6})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         break;
-      case 'static-wave':
-        ctx.strokeStyle = `rgba(200, 60, 200, ${pulse})`;
+      }
+      case 'static-wave': {
+        // Glow area
+        ctx.fillStyle = `rgba(180, 40, 200, ${pulse * 0.08})`;
+        ctx.fillRect(obs.x - 4, obs.y - 4, obs.w + 8, obs.h + 8);
+        // Main wave
+        ctx.strokeStyle = `rgba(220, 80, 240, ${pulse})`;
         ctx.lineWidth = 3;
+        ctx.shadowColor = `rgba(200, 60, 220, ${glowAlpha})`;
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        for (let wx = 0; wx < obs.w; wx += 4) {
-          const wy = obs.y + obs.h / 2 + Math.sin((wx + animTime * 200) * 0.08) * (obs.h / 2.5);
+        for (let wx = 0; wx < obs.w; wx += 3) {
+          const wy = obs.y + obs.h / 2 + Math.sin((wx + animTime * 180) * 0.1) * (obs.h / 2.5);
+          if (wx === 0) ctx.moveTo(obs.x + wx, wy);
+          else ctx.lineTo(obs.x + wx, wy);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Secondary wave (fainter)
+        ctx.strokeStyle = `rgba(160, 40, 180, ${pulse * 0.4})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let wx = 0; wx < obs.w; wx += 3) {
+          const wy = obs.y + obs.h / 2 + Math.sin((wx + animTime * 220 + 30) * 0.12) * (obs.h / 3);
           if (wx === 0) ctx.moveTo(obs.x + wx, wy);
           else ctx.lineTo(obs.x + wx, wy);
         }
         ctx.stroke();
         // Fill area
-        ctx.fillStyle = `rgba(200, 60, 200, ${pulse * 0.15})`;
+        ctx.fillStyle = `rgba(180, 40, 200, ${pulse * 0.1})`;
         ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
         break;
-      case 'static-pillar':
-        ctx.fillStyle = `rgba(100, 100, 200, ${pulse * 0.7})`;
+      }
+      case 'static-pillar': {
+        // Pillar glow
+        ctx.shadowColor = `rgba(100, 100, 255, ${glowAlpha})`;
+        ctx.shadowBlur = 10;
+        // Main pillar body (gradient)
+        const pillarGrad = ctx.createLinearGradient(obs.x, obs.y, obs.x + obs.w, obs.y);
+        pillarGrad.addColorStop(0, `rgba(60, 60, 160, ${pulse * 0.8})`);
+        pillarGrad.addColorStop(0.5, `rgba(90, 90, 200, ${pulse * 0.9})`);
+        pillarGrad.addColorStop(1, `rgba(60, 60, 160, ${pulse * 0.8})`);
+        ctx.fillStyle = pillarGrad;
         ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-        // Electricity effect
-        ctx.strokeStyle = `rgba(150, 150, 255, ${pulse})`;
-        ctx.lineWidth = 1;
-        for (let j = 0; j < 3; j++) {
+        ctx.shadowBlur = 0;
+        // Electricity bolts (deterministic from position)
+        ctx.strokeStyle = `rgba(180, 180, 255, ${pulse * 0.8})`;
+        ctx.lineWidth = 1.5;
+        const boltSeed = Math.floor(animTime * 6) * 31;
+        for (let j = 0; j < 4; j++) {
           ctx.beginPath();
-          const startY = obs.y + Math.random() * obs.h;
-          ctx.moveTo(obs.x, startY);
-          ctx.lineTo(obs.x + obs.w, startY + (Math.random() - 0.5) * 20);
+          const startY2 = obs.y + ((boltSeed + j * 137) % Math.max(1, obs.h - 10)) + 5;
+          ctx.moveTo(obs.x, startY2);
+          let bx = obs.x;
+          for (let seg = 0; seg < 3; seg++) {
+            bx += obs.w / 3;
+            const by = startY2 + ((boltSeed + j * 53 + seg * 17) % 20) - 10;
+            ctx.lineTo(bx, by);
+          }
           ctx.stroke();
         }
+        // Edge highlight
+        ctx.fillStyle = `rgba(150, 150, 255, ${pulse * 0.4})`;
+        ctx.fillRect(obs.x, obs.y, 2, obs.h);
+        ctx.fillRect(obs.x + obs.w - 2, obs.y, 2, obs.h);
+        // Top/bottom caps
+        ctx.fillStyle = `rgba(120, 120, 220, ${pulse * 0.6})`;
+        if (obs.y > 0) ctx.fillRect(obs.x - 2, obs.y, obs.w + 4, 4);
+        if (obs.y + obs.h < HEIGHT) ctx.fillRect(obs.x - 2, obs.y + obs.h - 4, obs.w + 4, 4);
         break;
+      }
     }
   }
 
   function drawSigRunner(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    const bob = Math.sin(animTime * 3 + x * 0.01) * 2;
-    const cy = y + 10 + bob;
-    ctx.fillStyle = `rgba(0, 255, 0, ${0.2 + Math.sin(animTime * 4) * 0.05})`;
+    const bob = Math.sin(animTime * 3 + x * 0.01) * 3;
+    const cx2 = x + 12;
+    const cy = y + 12 + bob;
+    // Outer glow
+    const sigGlow = ctx.createRadialGradient(cx2, cy, 0, cx2, cy, 16);
+    sigGlow.addColorStop(0, `rgba(0, 255, 100, ${0.15 + Math.sin(animTime * 4) * 0.05})`);
+    sigGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = sigGlow;
     ctx.beginPath();
-    ctx.arc(x + 10, cy, 11, 0, Math.PI * 2);
+    ctx.arc(cx2, cy, 16, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#00ff00';
+    // Core circle
+    ctx.fillStyle = `rgba(0, 40, 20, 0.7)`;
+    ctx.beginPath();
+    ctx.arc(cx2, cy, 10, 0, Math.PI * 2);
+    ctx.fill();
+    // Ring
+    ctx.strokeStyle = '#00ff66';
     ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx2, cy, 10, 0, Math.PI * 2);
+    ctx.stroke();
+    // Sound wave arcs
+    ctx.strokeStyle = '#00ff66';
+    ctx.lineWidth = 1.5;
     for (let w = 0; w < 3; w++) {
+      const arcAlpha = 0.8 - w * 0.2;
+      ctx.strokeStyle = `rgba(0, 255, 100, ${arcAlpha})`;
       ctx.beginPath();
-      ctx.arc(x + 10, cy, 3 + w * 3, -0.5, 0.5);
+      ctx.arc(cx2, cy, 4 + w * 3, -0.6, 0.6);
       ctx.stroke();
     }
+    // Center dot
     ctx.fillStyle = '#fff';
-    ctx.fillRect(x + 8, cy - 2, 4, 4);
+    ctx.beginPath();
+    ctx.arc(cx2, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawHat(ctx: CanvasRenderingContext2D, x: number, y: number) {
     const bob = Math.sin(animTime * 2.5 + x * 0.02) * 3;
-    const hy = y + bob;
-    // Golden glow
-    ctx.fillStyle = `rgba(255, 180, 0, ${0.2 + Math.sin(animTime * 5) * 0.1})`;
+    const hx = x + 12;
+    const hy = y + 12 + bob;
+    // Golden radial glow
+    const hatGlow = ctx.createRadialGradient(hx, hy, 0, hx, hy, 22);
+    hatGlow.addColorStop(0, `rgba(255, 200, 0, ${0.2 + Math.sin(animTime * 5) * 0.08})`);
+    hatGlow.addColorStop(0.5, `rgba(255, 150, 0, ${0.1})`);
+    hatGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = hatGlow;
     ctx.beginPath();
-    ctx.arc(x + 10, hy + 10, 14, 0, Math.PI * 2);
+    ctx.arc(hx, hy, 22, 0, Math.PI * 2);
     ctx.fill();
+    // Spinning sparkle ring
+    for (let s = 0; s < 3; s++) {
+      const angle = animTime * 3 + s * (Math.PI * 2 / 3);
+      const sparkX = hx + Math.cos(angle) * 14;
+      const sparkY = hy + Math.sin(angle) * 14;
+      ctx.fillStyle = `rgba(255, 255, 200, ${0.5 + Math.sin(animTime * 6 + s) * 0.3})`;
+      ctx.fillRect(sparkX - 1.5, sparkY - 1.5, 3, 3);
+    }
     // Hat brim
-    ctx.fillStyle = '#ff8800';
-    ctx.fillRect(x, hy + 12, 20, 5);
-    // Hat top
+    ctx.fillStyle = '#dd7700';
+    ctx.fillRect(hx - 12, hy + 4, 24, 5);
+    // Hat body
     ctx.fillStyle = '#ffaa00';
-    ctx.fillRect(x + 4, hy + 2, 12, 12);
+    ctx.fillRect(hx - 8, hy - 8, 16, 13);
+    // Hat top highlight
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(hx - 6, hy - 7, 12, 4);
     // Band
     ctx.fillStyle = '#cc6600';
-    ctx.fillRect(x + 4, hy + 10, 12, 3);
-    // Star
+    ctx.fillRect(hx - 8, hy + 1, 16, 3);
+    // Star badge
     ctx.fillStyle = '#fff';
-    ctx.fillRect(x + 8, hy + 5, 4, 4);
+    ctx.fillRect(hx - 2, hy - 4, 4, 4);
+    ctx.fillRect(hx - 1, hy - 5, 2, 6);
+    ctx.fillRect(hx - 3, hy - 3, 6, 2);
   }
 
   function drawHUD(ctx: CanvasRenderingContext2D, progress: number) {
-    // Health
-    ctx.fillStyle = '#333';
-    ctx.fillRect(10, 10, 110, 16);
-    ctx.fillStyle = health > 2 ? '#00cc44' : health > 1 ? '#ffaa00' : '#ff3333';
-    ctx.fillRect(12, 12, (health / MAX_HEALTH) * 106, 12);
+    // Semi-transparent HUD background strip
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(0, 8, 180, 80);
+
+    // Health bar (styled)
+    const barX = 12, barY = 14, barW = 120, barH = 14;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+    const healthFrac = health / MAX_HEALTH;
+    const healthGrad = ctx.createLinearGradient(barX, barY, barX + barW * healthFrac, barY);
+    if (health > 2) {
+      healthGrad.addColorStop(0, '#00cc44');
+      healthGrad.addColorStop(1, '#00ff66');
+    } else if (health > 1) {
+      healthGrad.addColorStop(0, '#cc8800');
+      healthGrad.addColorStop(1, '#ffaa00');
+    } else {
+      healthGrad.addColorStop(0, '#cc2200');
+      healthGrad.addColorStop(1, '#ff4444');
+    }
+    ctx.fillStyle = healthGrad;
+    ctx.fillRect(barX, barY, barW * healthFrac, barH);
+    // Health bar shine
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(barX, barY, barW * healthFrac, barH / 2);
+    // HP text
     ctx.fillStyle = '#fff';
-    ctx.font = '9px monospace';
-    ctx.fillText(`HP: ${health}/${MAX_HEALTH}`, 14, 22);
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(`HP ${health}/${MAX_HEALTH}`, barX + 2, barY + 11);
 
     // Score
-    ctx.fillStyle = '#00ff00';
-    ctx.font = '13px monospace';
-    ctx.fillText(`SCORE: ${score}`, 10, 44);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(`${score}`, 12, 48);
+    ctx.fillStyle = '#888';
+    ctx.font = '9px monospace';
+    ctx.fillText('SCORE', 12, 58);
 
-    // Hats collected
+    // Hats & SIGs row
     ctx.fillStyle = '#ffaa00';
     ctx.font = '11px monospace';
-    ctx.fillText(`🎩 ${hatsCollected}`, 10, 62);
-
-    // SIGs
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(`SIG: ${sigsCollected}`, 80, 62);
+    ctx.fillText(`\u{1F3A9} ${hatsCollected}`, 12, 76);
+    ctx.fillStyle = '#00ff66';
+    ctx.fillText(`SIG ${sigsCollected}`, 70, 76);
 
     // Invincibility indicator
     if (invincibleTimer > 0) {
-      ctx.fillStyle = `rgba(255, 200, 0, ${0.6 + Math.sin(animTime * 8) * 0.3})`;
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText(`⚡ INVINCIBLE ${invincibleTimer.toFixed(1)}s`, 10, 80);
+      const invPulse = 0.7 + Math.sin(animTime * 8) * 0.3;
+      ctx.fillStyle = `rgba(255, 200, 0, ${invPulse})`;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`\u26A1 INVINCIBLE ${invincibleTimer.toFixed(1)}s`, 12, 90);
     }
 
-    // Distance / progress
-    ctx.fillStyle = '#888';
-    ctx.font = '10px monospace';
+    // Right side: distance & speed
     ctx.textAlign = 'right';
-    ctx.fillText(`${Math.floor(progress * 100)}% → Clarity Beacon`, WIDTH - 10, 20);
-    ctx.fillText(`Speed: ${Math.floor(scrollSpeed)}`, WIDTH - 10, 36);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(WIDTH - 180, 8, 180, 40);
+    ctx.fillStyle = '#00ffaa';
+    ctx.font = '12px monospace';
+    ctx.fillText(`${Math.floor(progress * 100)}% \u2192 Clarity Beacon`, WIDTH - 12, 24);
+    ctx.fillStyle = '#666';
+    ctx.font = '10px monospace';
+    ctx.fillText(`SPEED ${Math.floor(scrollSpeed)}`, WIDTH - 12, 40);
     ctx.textAlign = 'left';
 
-    // Controls hint
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    // Controls hint (subtle)
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.font = '9px monospace';
-    ctx.fillText('UP/W/SPACE: thrust • Q/ESC: quit', 10, HEIGHT - 10);
+    ctx.fillText('UP/W/SPACE: thrust \u2022 Q/ESC: quit', 10, HEIGHT - 8);
   }
 
   // === GAME LOOP ===
