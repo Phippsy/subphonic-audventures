@@ -259,37 +259,31 @@ export function mountGame(container: HTMLElement): void {
 
     // Ch3 Resonance Spire: Vertical platforming over the void (x: 5400-6300)
     // Entry platform from ground level
-    { x: 5380, y: 420, w: 100, h: 24 },
-    // Ascending platforms - zigzag climb
-    { x: 5440, y: 360, w: 90, h: 24 },
-    { x: 5560, y: 310, w: 85, h: 24 },
-    { x: 5440, y: 250, w: 90, h: 24 },
-    { x: 5570, y: 195, w: 85, h: 24 },
-    { x: 5430, y: 135, w: 95, h: 24 },
-    { x: 5560, y: 75, w: 90, h: 24 },
-    { x: 5450, y: 10, w: 85, h: 24 },
-    { x: 5580, y: -50, w: 90, h: 24 },
-    { x: 5450, y: -115, w: 95, h: 24 },
-    // Summit ridge - traverse right along narrow platforms high up
-    { x: 5580, y: -170, w: 80, h: 24 },
-    { x: 5700, y: -170, w: 75, h: 24 },
-    { x: 5820, y: -190, w: 80, h: 24 },
-    { x: 5940, y: -170, w: 75, h: 24 },
-    { x: 6050, y: -150, w: 85, h: 24 },
-    // Moving platforms at the summit
-    { x: 5650, y: -130, w: 70, h: 24, moving: true, moveVx: 50, moveLeft: 5600, moveRight: 5750 },
-    { x: 5900, y: -210, w: 70, h: 24, moving: true, moveVx: -45, moveLeft: 5850, moveRight: 6000 },
-    // Descent on the far side - drops back toward ground
-    { x: 6100, y: -100, w: 85, h: 24 },
-    { x: 6170, y: -30, w: 80, h: 24 },
-    { x: 6100, y: 40, w: 90, h: 24 },
-    { x: 6180, y: 110, w: 80, h: 24 },
-    { x: 6100, y: 180, w: 90, h: 24 },
-    { x: 6180, y: 255, w: 85, h: 24 },
-    { x: 6100, y: 330, w: 95, h: 24 },
-    { x: 6200, y: 400, w: 100, h: 24 },
+    { x: 5370, y: 420, w: 140, h: 24 },
+    // Ascending platforms - wide zigzag climb with generous spacing
+    { x: 5450, y: 340, w: 130, h: 24 },
+    { x: 5620, y: 260, w: 120, h: 24 },
+    { x: 5440, y: 175, w: 130, h: 24 },
+    { x: 5630, y: 95, w: 120, h: 24 },
+    { x: 5430, y: 10, w: 140, h: 24 },
+    { x: 5620, y: -75, w: 130, h: 24 },
+    { x: 5440, y: -160, w: 130, h: 24 },
+    // Summit ridge - wider platforms, traverse right
+    { x: 5620, y: -240, w: 120, h: 24 },
+    { x: 5790, y: -220, w: 110, h: 24 },
+    { x: 5950, y: -240, w: 120, h: 24 },
+    { x: 6100, y: -210, w: 110, h: 24 },
+    // Moving platform at summit (slow, wide patrol)
+    { x: 5700, y: -280, w: 90, h: 24, moving: true, moveVx: 40, moveLeft: 5620, moveRight: 5900 },
+    // Descent on the far side - generous drops
+    { x: 6180, y: -120, w: 120, h: 24 },
+    { x: 6100, y: -20, w: 130, h: 24 },
+    { x: 6190, y: 80, w: 120, h: 24 },
+    { x: 6100, y: 180, w: 130, h: 24 },
+    { x: 6200, y: 290, w: 120, h: 24 },
+    { x: 6100, y: 380, w: 140, h: 24 },
     // Landing platform back at ground on far side
-    { x: 6280, y: 430, w: 100, h: 24 },
+    { x: 6250, y: 430, w: 120, h: 24 },
 
     // Ch4: tight gauntlet (shifted +900, all first-step platforms reachable from ground)
     { x: 6400, y: 380, w: 100, h: 24 },
@@ -326,9 +320,9 @@ export function mountGame(container: HTMLElement): void {
     { x: 5080, y: 364, w: 18, h: 18, collected: false },
     { x: 5210, y: 334, w: 18, h: 18, collected: false },
     // Ch3 Resonance Spire: sigs on the vertical climb
-    { x: 5470, y: 120, w: 18, h: 18, collected: false },
-    { x: 5610, y: -60, w: 18, h: 18, collected: false },
-    { x: 5840, y: -204, w: 18, h: 18, collected: false },
+    { x: 5470, y: -5, w: 18, h: 18, collected: false },
+    { x: 5650, y: -90, w: 18, h: 18, collected: false },
+    { x: 5970, y: -255, w: 18, h: 18, collected: false },
     // Ch4 (shifted +900)
     { x: 6430, y: 334, w: 18, h: 18, collected: false },
     { x: 6690, y: 294, w: 18, h: 18, collected: false },
@@ -352,11 +346,10 @@ export function mountGame(container: HTMLElement): void {
     { x: 3960, y: 336, w: 34, h: 34, vx: 70, leftBound: 3950, rightBound: 4035, alive: true },
     { x: 4560, y: 346, w: 34, h: 34, vx: -65, leftBound: 4550, rightBound: 4640, alive: true },
     { x: 5060, y: 376, w: 36, h: 36, vx: 80, leftBound: 5020, rightBound: 5120, alive: true },
-    // Ch3 Resonance Spire: enemies on the high platforms
-    { x: 5600, y: 271, w: 34, h: 34, vx: 60, leftBound: 5560, rightBound: 5645, alive: true },
-    { x: 5710, y: -204, w: 34, h: 34, vx: -55, leftBound: 5700, rightBound: 5775, alive: true },
-    { x: 5950, y: -204, w: 34, h: 34, vx: 50, leftBound: 5940, rightBound: 6015, alive: true },
-    { x: 6110, y: -134, w: 34, h: 34, vx: -55, leftBound: 6100, rightBound: 6185, alive: true },
+    // Ch3 Resonance Spire: enemies on wide platforms (avoidable)
+    { x: 5470, y: 142, w: 30, h: 30, vx: 45, leftBound: 5440, rightBound: 5560, alive: true },
+    { x: 5820, y: -254, w: 30, h: 30, vx: -40, leftBound: 5790, rightBound: 5890, alive: true },
+    { x: 6120, y: -54, w: 30, h: 30, vx: 40, leftBound: 6100, rightBound: 6220, alive: true },
     // Ch4: fast and aggressive (shifted +900)
     { x: 6570, y: 346, w: 38, h: 38, vx: -120, leftBound: 6550, rightBound: 6640, alive: true },
     { x: 6840, y: 362, w: 38, h: 38, vx: 110, leftBound: 6820, rightBound: 6930, alive: true },
