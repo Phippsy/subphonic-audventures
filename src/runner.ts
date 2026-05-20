@@ -1671,103 +1671,152 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     // Neck
     ctx.fillStyle = '#e0b890';
     ctx.fillRect(x + 14, y + 13, 8, 5);
-    // Head shape (rounded)
+    // Head shape (rounded, warm skin)
     ctx.fillStyle = '#e0b890';
     ctx.beginPath();
-    ctx.ellipse(x + 18, y + 8, 11, 10, 0, 0, Math.PI * 2);
+    ctx.roundRect(x + 7, y + 1, 22, 16, 6);
     ctx.fill();
+    // Cheeks (warmer tone)
+    ctx.fillStyle = '#e8c8a0';
+    ctx.beginPath();
+    ctx.arc(x + 12, y + 11, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 24, y + 11, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === EYES (expressive, visible) ===
+    // Eye whites
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(x + 11, y + 7, 6, 5, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + 19, y + 7, 6, 5, 2);
+    ctx.fill();
+    // Irises (green)
+    ctx.fillStyle = invincible ? '#ffcc00' : '#44aa66';
+    ctx.beginPath();
+    ctx.arc(x + 14, y + 9.5, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 22, y + 9.5, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + 14.5, y + 9.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 22.5, y + 9.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x + 13.5, y + 8.5, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 21.5, y + 8.5, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === EXPRESSION (confident smile) ===
+    ctx.strokeStyle = '#6a4030';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x + 18, y + 13, 3.5, 0.2, Math.PI - 0.2);
+    ctx.stroke();
 
     // === HAIR (purple, flowing back in wind) ===
     ctx.fillStyle = invincible ? '#cc88ff' : '#7a3a9a';
-    // Main volume
+    // Main volume on top
     ctx.beginPath();
-    ctx.ellipse(x + 18, y + 4, 12, 7, 0, Math.PI + 0.3, -0.3);
+    ctx.roundRect(x + 5, y - 2, 24, 8, [4, 4, 0, 0]);
     ctx.fill();
+    // Fringe
+    ctx.fillRect(x + 7, y + 1, 5, 4);
     // Wind-blown strands trailing back
     ctx.beginPath();
-    ctx.moveTo(x + 6, y + 5);
-    ctx.quadraticCurveTo(x + 2, y + 10, x + 0, y + 16);
-    ctx.lineTo(x + 3, y + 14);
-    ctx.quadraticCurveTo(x + 4, y + 9, x + 8, y + 6);
+    ctx.moveTo(x + 6, y + 2);
+    ctx.quadraticCurveTo(x + 2, y + 8, x + 0, y + 14);
+    ctx.lineTo(x + 3, y + 12);
+    ctx.quadraticCurveTo(x + 4, y + 7, x + 8, y + 3);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(x + 5, y + 8);
-    ctx.quadraticCurveTo(x + 1, y + 14, x - 1, y + 20);
-    ctx.lineTo(x + 2, y + 18);
-    ctx.quadraticCurveTo(x + 3, y + 12, x + 7, y + 9);
+    ctx.moveTo(x + 5, y + 5);
+    ctx.quadraticCurveTo(x + 1, y + 12, x - 1, y + 18);
+    ctx.lineTo(x + 2, y + 16);
+    ctx.quadraticCurveTo(x + 3, y + 10, x + 7, y + 6);
     ctx.closePath();
     ctx.fill();
     // Hair highlight
     ctx.fillStyle = invincible ? '#ddaaff' : '#9a5aba';
     ctx.beginPath();
-    ctx.ellipse(x + 16, y + 3, 4, 2.5, -0.3, 0, Math.PI * 2);
+    ctx.roundRect(x + 14, y - 1, 8, 4, 2);
     ctx.fill();
-    // Hair energy tips
-    if (!invincible) {
-      const tipGlow = 0.4 + Math.sin(animTime * 5) * 0.3;
-      ctx.fillStyle = `rgba(0, 200, 255, ${tipGlow})`;
-      ctx.beginPath();
-      ctx.arc(x + 0, y + 16, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(x - 1, y + 20, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // === GOGGLES (on face, active) ===
-    // Strap
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1.5;
+    // Hair energy tips (glow at strand ends)
+    const tipGlow = 0.4 + Math.sin(animTime * 5) * 0.3;
+    ctx.fillStyle = invincible ? `rgba(255, 200, 100, ${tipGlow})` : `rgba(0, 200, 255, ${tipGlow})`;
     ctx.beginPath();
-    ctx.ellipse(x + 18, y + 8, 11, 7, 0, 0.4, Math.PI - 0.4);
-    ctx.stroke();
-    // Left lens
+    ctx.arc(x + 0, y + 14, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x - 1, y + 18, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === GOGGLES (pushed up on forehead) ===
     ctx.fillStyle = invincible ? '#443300' : '#003322';
     ctx.beginPath();
-    ctx.ellipse(x + 13, y + 9, 5, 4, 0, 0, Math.PI * 2);
+    ctx.roundRect(x + 10, y - 1, 5, 3, 1);
     ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + 20, y - 1, 5, 3, 1);
+    ctx.fill();
+    // Goggle frame
     ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.roundRect(x + 10, y - 1, 5, 3, 1);
     ctx.stroke();
-    // Right lens
-    ctx.fillStyle = invincible ? '#443300' : '#003322';
     ctx.beginPath();
-    ctx.ellipse(x + 23, y + 9, 5, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 1.2;
+    ctx.roundRect(x + 20, y - 1, 5, 3, 1);
     ctx.stroke();
-    // Lens shine
-    ctx.fillStyle = invincible ? '#ffee88' : '#aaffee';
+    // Strap across hair
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(x + 11, y + 8, 2.5, 1.5, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(x + 21, y + 8, 2.5, 1.5, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-    // Bridge
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(x + 17, y + 8, 2, 2);
-
-    // === EXPRESSION (determined) ===
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + 14, y + 14, 8, 1);
-    // Slight grin corner
-    ctx.fillRect(x + 22, y + 13, 1, 1);
+    ctx.moveTo(x + 10, y);
+    ctx.lineTo(x + 7, y + 1);
+    ctx.moveTo(x + 25, y);
+    ctx.lineTo(x + 28, y + 1);
+    ctx.stroke();
 
     // === ARM (trailing back) ===
     ctx.fillStyle = suitMid;
     ctx.save();
     ctx.translate(x + 30, y + 20);
     ctx.rotate(boosting ? 0.4 : 0.2);
-    ctx.fillRect(0, 0, 5, 14);
-    ctx.fillStyle = '#e0b890';
-    ctx.fillRect(0, 12, 5, 4);
+    ctx.fillRect(0, 0, 5, 12);
+    // Glove
+    ctx.fillStyle = invincible ? '#aa8800' : '#2a4a4a';
+    ctx.beginPath();
+    ctx.roundRect(0, 11, 6, 5, 2);
+    ctx.fill();
     ctx.restore();
 
-    // === PLAYER GLOW (subtle aura) ===
+    // === PLAYER GLOW (invincible aura) ===
     if (invincible) {
+      // Warm golden shield aura
+      const auraAlpha = 0.25 + Math.sin(animTime * 8) * 0.1;
+      const auraGrad = ctx.createRadialGradient(x + 18, y + 22, 5, x + 18, y + 22, 28);
+      auraGrad.addColorStop(0, `rgba(255, 220, 50, ${auraAlpha * 0.3})`);
+      auraGrad.addColorStop(0.7, `rgba(255, 180, 0, ${auraAlpha * 0.15})`);
+      auraGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.ellipse(x + 18, y + 22, 24, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Edge ring
       ctx.strokeStyle = `rgba(255, 220, 50, ${0.4 + Math.sin(animTime * 8) * 0.2})`;
       ctx.lineWidth = 2;
       ctx.beginPath();

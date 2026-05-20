@@ -74,8 +74,12 @@ document.addEventListener('keydown', (e) => {
 
 // Level orchestration
 let runnerCleanup: (() => void) | null = null;
+let gameCleanup: (() => void) | null = null;
 
 function launchLevel2() {
+  gameCleanup?.();
+  gameCleanup = null;
+  runnerCleanup?.();
   runnerCleanup = mountRunner(
     gameRoot!,
     () => {
@@ -95,8 +99,10 @@ function launchLevel2() {
 }
 
 function launchLevel1() {
+  runnerCleanup?.();
+  runnerCleanup = null;
   gameRoot!.innerHTML = '';
-  mountGame(gameRoot!, { launchLevel2 });
+  gameCleanup = mountGame(gameRoot!, { launchLevel2 });
 }
 
 launchLevel1();

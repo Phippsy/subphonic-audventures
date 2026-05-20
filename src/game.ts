@@ -147,12 +147,13 @@ const persistState = (state: GameState) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
-export function mountGame(container: HTMLElement, options: GameOptions = {}): void {
+export function mountGame(container: HTMLElement, options: GameOptions = {}): () => void {
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   canvas.className = 'game-canvas';
   container.appendChild(canvas);
+  let destroyed = false;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Unable to start game: canvas context unavailable.');
@@ -458,7 +459,8 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
   ];
 
   const keys: Record<string, boolean> = {};
-  window.addEventListener('keydown', (e) => {
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (destroyed) return;
     keys[e.key.toLowerCase()] = true;
     // Win screen name entry
     if (won && !wonNameSubmitted) {
@@ -495,8 +497,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
         e.preventDefault();
       }
     }
-  });
-  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+  };
+  const onKeyUp = (e: KeyboardEvent) => { if (!destroyed) keys[e.key.toLowerCase()] = false; };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
 
   let running = true;
   let won = false;
@@ -3684,13 +3688,22 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): vo
     cameraX = realCameraX;
   };
 
+  let frameId = 0;
   const frame = (now: number) => {
+    if (destroyed) return;
     const dt = Math.min((now - lastTime) / 1000, 0.033);
     lastTime = now;
     update(dt);
     draw();
-    requestAnimationFrame(frame);
+    frameId = requestAnimationFrame(frame);
   };
 
-  requestAnimationFrame(frame);
+  frameId = requestAnimationFrame(frame);
+
+  return () => {
+    destroyed = true;
+    cancelAnimationFrame(frameId);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+  };
 }
