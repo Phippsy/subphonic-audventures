@@ -810,16 +810,20 @@ export function mountGame(container: HTMLElement): void {
         keys.escape = false;
         startMenuSelection = 0;
       } else {
-        if (keys.arrowup || keys.w) {
+        if (keys.arrowup || keys.w || keys.arrowleft || keys.a) {
           startMenuSelection = (startMenuSelection + 2) % 3;
           keys.arrowup = false;
           keys.w = false;
+          keys.arrowleft = false;
+          keys.a = false;
           sfxMenuSelect();
         }
-        if (keys.arrowdown || keys.s) {
+        if (keys.arrowdown || keys.s || keys.arrowright || keys.d) {
           startMenuSelection = (startMenuSelection + 1) % 3;
           keys.arrowdown = false;
           keys.s = false;
+          keys.arrowright = false;
+          keys.d = false;
           sfxMenuSelect();
         }
         if (startPressed) {
@@ -3190,71 +3194,90 @@ export function mountGame(container: HTMLElement): void {
         } else {
           ctx.fillText('SPACE/ENTER or ESC to return to menu', WIDTH / 2, HEIGHT - 45);
         }
-      } else if (startMenuSelection === 1) {
-        // Leaderboard view within menu
-        const scoreActive = startMenuLeaderboardTab === 'score';
-        ctx.fillStyle = scoreActive ? '#00ff00' : '#555';
-        ctx.font = scoreActive ? 'bold 13px monospace' : '13px monospace';
-        ctx.fillText('[1] SCORE', WIDTH / 2 - 80, 158);
-        ctx.fillStyle = !scoreActive ? '#00ff00' : '#555';
-        ctx.font = !scoreActive ? 'bold 13px monospace' : '13px monospace';
-        ctx.fillText('[2] SPEEDRUN', WIDTH / 2 + 80, 158);
-
-        ctx.font = '12px monospace';
-        const startY = 185;
-        if (startMenuLeaderboardTab === 'score') {
-          const board = getLeaderboard();
-          if (board.length === 0) {
-            ctx.fillStyle = '#666';
-            ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 250);
-          } else {
-            for (let i = 0; i < Math.min(board.length, 10); i++) {
-              ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
-              const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
-              const name = board[i].name.padEnd(16, ' ');
-              const score = board[i].score.toString().padStart(8, ' ');
-              ctx.fillText(`${rank} ${name} ${score}  ${board[i].date}`, WIDTH / 2, startY + i * 22);
-            }
-          }
-        } else {
-          const board = getTimeLeaderboard();
-          if (board.length === 0) {
-            ctx.fillStyle = '#666';
-            ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 250);
-          } else {
-            for (let i = 0; i < Math.min(board.length, 10); i++) {
-              ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
-              const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
-              const name = board[i].name.padEnd(16, ' ');
-              const time = formatTime(board[i].time).padStart(8, ' ');
-              ctx.fillText(`${rank} ${name} ${time}  ${board[i].date}`, WIDTH / 2, startY + i * 22);
-            }
-          }
-        }
-        ctx.fillStyle = '#555';
-        ctx.font = '11px monospace';
-        ctx.fillText('Press 1/2 to switch • ESC to go back', WIDTH / 2, HEIGHT - 45);
       } else {
-        // Main menu options
+        // Always show menu items as selectable tabs
         const menuItems = ['NEW GAME', 'LEADERBOARD', 'STORY'];
-        const menuY = 170;
+        const menuY = 155;
+        const menuSpacing = 200;
+        const menuStartX = WIDTH / 2 - menuSpacing;
         menuItems.forEach((item, i) => {
           const selected = i === startMenuSelection;
-          ctx.fillStyle = selected ? '#00ff00' : '#666666';
-          ctx.font = selected ? 'bold 18px monospace' : '16px monospace';
+          ctx.fillStyle = selected ? '#00ff00' : '#555555';
+          ctx.font = selected ? 'bold 14px monospace' : '13px monospace';
           const prefix = selected ? '▶ ' : '  ';
-          ctx.fillText(prefix + item, WIDTH / 2, menuY + i * 45);
+          ctx.fillText(prefix + item, menuStartX + i * menuSpacing, menuY);
         });
 
-        // Game description
-        ctx.fillStyle = '#555';
-        ctx.font = '11px monospace';
-        ctx.fillText('Navigate Acoustica • Collect signals • Defeat Lord Noise', WIDTH / 2, 330);
+        // Separator below menu
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+        ctx.fillRect(WIDTH / 2 - 200, 170, 400, 1);
 
-        // Controls
+        if (startMenuSelection === 0) {
+          // New Game selected — show description
+          ctx.fillStyle = '#aaa';
+          ctx.font = '13px monospace';
+          ctx.fillText('Navigate Acoustica • Collect signals • Defeat Lord Noise', WIDTH / 2, 220);
+          ctx.fillStyle = '#666';
+          ctx.font = '12px monospace';
+          ctx.fillText('Press ENTER or SPACE to start', WIDTH / 2, 270);
+        } else if (startMenuSelection === 1) {
+          // Leaderboard view
+          const scoreActive = startMenuLeaderboardTab === 'score';
+          ctx.fillStyle = scoreActive ? '#00ff00' : '#555';
+          ctx.font = scoreActive ? 'bold 12px monospace' : '12px monospace';
+          ctx.fillText('[1] SCORE', WIDTH / 2 - 80, 195);
+          ctx.fillStyle = !scoreActive ? '#00ff00' : '#555';
+          ctx.font = !scoreActive ? 'bold 12px monospace' : '12px monospace';
+          ctx.fillText('[2] SPEEDRUN', WIDTH / 2 + 80, 195);
+
+          ctx.font = '11px monospace';
+          const startY = 220;
+          if (startMenuLeaderboardTab === 'score') {
+            const board = getLeaderboard();
+            if (board.length === 0) {
+              ctx.fillStyle = '#666';
+              ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 280);
+            } else {
+              for (let i = 0; i < Math.min(board.length, 10); i++) {
+                ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+                const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+                const name = board[i].name.padEnd(16, ' ');
+                const score = board[i].score.toString().padStart(8, ' ');
+                ctx.fillText(`${rank} ${name} ${score}  ${board[i].date}`, WIDTH / 2, startY + i * 20);
+              }
+            }
+          } else {
+            const board = getTimeLeaderboard();
+            if (board.length === 0) {
+              ctx.fillStyle = '#666';
+              ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 280);
+            } else {
+              for (let i = 0; i < Math.min(board.length, 10); i++) {
+                ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+                const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+                const name = board[i].name.padEnd(16, ' ');
+                const time = formatTime(board[i].time).padStart(8, ' ');
+                ctx.fillText(`${rank} ${name} ${time}  ${board[i].date}`, WIDTH / 2, startY + i * 20);
+              }
+            }
+          }
+          ctx.fillStyle = '#555';
+          ctx.font = '10px monospace';
+          ctx.fillText('1/2: switch tab • ←→: menu • ENTER: select', WIDTH / 2, HEIGHT - 48);
+        } else if (startMenuSelection === 2) {
+          // Story selected — show prompt
+          ctx.fillStyle = '#aaa';
+          ctx.font = '13px monospace';
+          ctx.fillText('Read the story of Acoustica and Sonia\'s mission', WIDTH / 2, 220);
+          ctx.fillStyle = '#666';
+          ctx.font = '12px monospace';
+          ctx.fillText('Press ENTER or SPACE to read', WIDTH / 2, 270);
+        }
+
+        // Controls hint
         ctx.fillStyle = '#444';
         ctx.font = '10px monospace';
-        ctx.fillText('ARROWS/WASD: move • SPACE: jump • H: hints • L: leaderboard • Q: quit', WIDTH / 2, HEIGHT - 45);
+        ctx.fillText('ARROWS/WASD: move • SPACE: jump • H: hints • L: leaderboard • Q: quit', WIDTH / 2, HEIGHT - 30);
       }
 
       // Border
