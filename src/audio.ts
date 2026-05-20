@@ -437,6 +437,80 @@ export const sfxFall = () => {
   playNoise(1.0, 0.12, 800, 'lowpass');
 };
 
+// === RUNNER LEVEL AUDIO ===
+
+export const sfxThrust = () => {
+  // Jet/thrust burst: filtered noise + rising tone
+  const ac = ensureContext();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(80, ac.currentTime);
+  osc.frequency.linearRampToValueAtTime(200, ac.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.06, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 0.1);
+  playNoise(0.06, 0.04, 400, 'lowpass');
+};
+
+export const sfxStaticHit = () => {
+  // Getting hit by static: harsh crackle
+  const ac = ensureContext();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(120, ac.currentTime);
+  osc.frequency.linearRampToValueAtTime(40, ac.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.2, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.2);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 0.2);
+  playNoise(0.12, 0.15, 2000, 'highpass');
+};
+
+export const sfxInvincible = () => {
+  // Invincibility activate: bright ascending arpeggio
+  const ac = ensureContext();
+  const freqs = [440, 554, 659, 880];
+  freqs.forEach((f, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const t = ac.currentTime + i * 0.06;
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.linearRampToValueAtTime(0, t + 0.15);
+    osc.connect(gain);
+    gain.connect(masterGain!);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  });
+};
+
+export const sfxRunnerWin = () => {
+  // Level complete fanfare: major chord sweep
+  const ac = ensureContext();
+  const freqs = [262, 330, 392, 523, 659];
+  freqs.forEach((f, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const t = ac.currentTime + i * 0.1;
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.linearRampToValueAtTime(0, t + 0.4);
+    osc.connect(gain);
+    gain.connect(masterGain!);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  });
+};
+
 // Initialize audio on first user interaction
 export const initAudio = () => {
   ensureContext();

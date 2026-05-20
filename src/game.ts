@@ -1,5 +1,10 @@
 import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
 import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
+import { markLevel1Complete, isLevel2Unlocked } from './progress';
+
+export interface GameOptions {
+  launchLevel2?: () => void;
+}
 
 export type Rect = {
   x: number;
@@ -142,7 +147,7 @@ const persistState = (state: GameState) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
-export function mountGame(container: HTMLElement): void {
+export function mountGame(container: HTMLElement, options: GameOptions = {}): void {
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -471,9 +476,12 @@ export function mountGame(container: HTMLElement): void {
       }
       e.preventDefault();
     } else if (won && wonNameSubmitted) {
-      // Play again or switch tabs
+      // Play again, next level, or switch tabs
       if (e.key === 'Enter' || e.key.toLowerCase() === 'r') {
         restartGame();
+        e.preventDefault();
+      } else if (e.key.toLowerCase() === 'n' && options.launchLevel2) {
+        options.launchLevel2();
         e.preventDefault();
       } else if (e.key === '1') {
         wonLeaderboardTab = 'score';
@@ -805,13 +813,13 @@ export function mountGame(container: HTMLElement): void {
           showingStory = false;
           storyPageFromMenu = 0;
         }
-      } else if (startMenuSelection === 1 && keys.escape) {
+      } else if (startMenuSelection === 2 && keys.escape) {
         // Back from leaderboard view in menu
         keys.escape = false;
         startMenuSelection = 0;
       } else {
         if (keys.arrowup || keys.w || keys.arrowleft || keys.a) {
-          startMenuSelection = (startMenuSelection + 2) % 3;
+          startMenuSelection = (startMenuSelection + 3) % 4;
           keys.arrowup = false;
           keys.w = false;
           keys.arrowleft = false;
@@ -819,7 +827,7 @@ export function mountGame(container: HTMLElement): void {
           sfxMenuSelect();
         }
         if (keys.arrowdown || keys.s || keys.arrowright || keys.d) {
-          startMenuSelection = (startMenuSelection + 1) % 3;
+          startMenuSelection = (startMenuSelection + 1) % 4;
           keys.arrowdown = false;
           keys.s = false;
           keys.arrowright = false;
@@ -830,7 +838,7 @@ export function mountGame(container: HTMLElement): void {
           keys[' '] = false;
           keys.enter = false;
           if (startMenuSelection === 0) {
-            // New Game — reset game state
+            // Level 1 — reset game state
             startMenuActive = false;
             introActive = false;
             running = true;
@@ -867,14 +875,19 @@ export function mountGame(container: HTMLElement): void {
             initAudio();
             startBGM();
           } else if (startMenuSelection === 1) {
-            // Leaderboard — handled in draw (just stays in menu)
+            // Level 2 — launch runner
+            if (isLevel2Unlocked() && options.launchLevel2) {
+              options.launchLevel2();
+            }
           } else if (startMenuSelection === 2) {
+            // Leaderboard — handled in draw (just stays in menu)
+          } else if (startMenuSelection === 3) {
             // Story
             showingStory = true;
             storyPageFromMenu = 0;
           }
         }
-        if (startMenuSelection === 1) {
+        if (startMenuSelection === 2) {
           if (keys['1']) { startMenuLeaderboardTab = 'score'; keys['1'] = false; }
           if (keys['2']) { startMenuLeaderboardTab = 'time'; keys['2'] = false; }
         }
@@ -1310,6 +1323,7 @@ export function mountGame(container: HTMLElement): void {
       running = false;
       missionTimerRunning = false;
       finalTime = missionTimer;
+      markLevel1Complete();
       sfxWin();
       state.lives = 3;
       state.insight = 0;
@@ -3199,14 +3213,16 @@ export function mountGame(container: HTMLElement): void {
         }
       } else {
         // Always show menu items as selectable tabs
-        const menuItems = ['NEW GAME', 'LEADERBOARD', 'STORY'];
+        const level2Unlocked = isLevel2Unlocked();
+        const menuItems = ['LEVEL 1', level2Unlocked ? 'LEVEL 2' : 'LEVEL 2 🔒', 'LEADERBOARD', 'STORY'];
         const menuY = 155;
-        const menuSpacing = 200;
-        const menuStartX = WIDTH / 2 - menuSpacing;
+        const menuSpacing = 150;
+        const menuStartX = WIDTH / 2 - menuSpacing * 1.5;
         menuItems.forEach((item, i) => {
           const selected = i === startMenuSelection;
-          ctx.fillStyle = selected ? '#00ff00' : '#555555';
-          ctx.font = selected ? 'bold 14px monospace' : '13px monospace';
+          const locked = i === 1 && !level2Unlocked;
+          ctx.fillStyle = locked ? '#333333' : selected ? '#00ff00' : '#555555';
+          ctx.font = selected ? 'bold 13px monospace' : '12px monospace';
           const prefix = selected ? '▶ ' : '  ';
           ctx.fillText(prefix + item, menuStartX + i * menuSpacing, menuY);
         });
@@ -3216,7 +3232,7 @@ export function mountGame(container: HTMLElement): void {
         ctx.fillRect(WIDTH / 2 - 200, 170, 400, 1);
 
         if (startMenuSelection === 0) {
-          // New Game selected — show description
+          // Level 1 selected — show description
           ctx.fillStyle = '#aaa';
           ctx.font = '13px monospace';
           ctx.fillText('Navigate Acoustica • Collect signals • Defeat Lord Noise', WIDTH / 2, 220);
@@ -3224,6 +3240,23 @@ export function mountGame(container: HTMLElement): void {
           ctx.font = '12px monospace';
           ctx.fillText('Press ENTER or SPACE to start', WIDTH / 2, 270);
         } else if (startMenuSelection === 1) {
+          // Level 2 selected
+          if (level2Unlocked) {
+            ctx.fillStyle = '#aaa';
+            ctx.font = '13px monospace';
+            ctx.fillText('Static Fields Runner • Thrust through chaos • Collect James\'s hats', WIDTH / 2, 220);
+            ctx.fillStyle = '#666';
+            ctx.font = '12px monospace';
+            ctx.fillText('Press ENTER or SPACE to launch', WIDTH / 2, 270);
+          } else {
+            ctx.fillStyle = '#666';
+            ctx.font = '13px monospace';
+            ctx.fillText('Complete Level 1 to unlock the Static Fields', WIDTH / 2, 220);
+            ctx.fillStyle = '#444';
+            ctx.font = '12px monospace';
+            ctx.fillText('Defeat Lord Noise first!', WIDTH / 2, 270);
+          }
+        } else if (startMenuSelection === 2) {
           // Leaderboard view
           const scoreActive = startMenuLeaderboardTab === 'score';
           ctx.fillStyle = scoreActive ? '#00ff00' : '#555';
@@ -3267,7 +3300,7 @@ export function mountGame(container: HTMLElement): void {
           ctx.fillStyle = '#555';
           ctx.font = '10px monospace';
           ctx.fillText('1/2: switch tab • ←→: menu • ENTER: select', WIDTH / 2, HEIGHT - 48);
-        } else if (startMenuSelection === 2) {
+        } else if (startMenuSelection === 3) {
           // Story selected — show prompt
           ctx.fillStyle = '#aaa';
           ctx.font = '13px monospace';
@@ -3445,13 +3478,17 @@ export function mountGame(container: HTMLElement): void {
           }
         }
 
-        // Tab switch hint + play again
+        // Tab switch hint + play again / next level
         ctx.fillStyle = '#666';
         ctx.font = '11px monospace';
         ctx.fillText('Press 1 or 2 to switch leaderboard', WIDTH / 2, HEIGHT - 70);
         ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(wonCursorBlink * 2) * 0.3})`;
         ctx.font = '12px monospace';
-        ctx.fillText('Press ENTER or R to play again', WIDTH / 2, HEIGHT - 50);
+        if (options.launchLevel2) {
+          ctx.fillText('R: play again • N: next level (Static Fields)', WIDTH / 2, HEIGHT - 50);
+        } else {
+          ctx.fillText('Press ENTER or R to play again', WIDTH / 2, HEIGHT - 50);
+        }
       }
       ctx.textAlign = 'left';
     }

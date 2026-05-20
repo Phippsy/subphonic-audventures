@@ -1,5 +1,7 @@
 import './style.css';
 import { mountGame } from './game';
+import { mountRunner } from './runner';
+import { markLevel2Complete } from './progress';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -70,4 +72,31 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-mountGame(gameRoot);
+// Level orchestration
+let runnerCleanup: (() => void) | null = null;
+
+function launchLevel2() {
+  runnerCleanup = mountRunner(
+    gameRoot!,
+    () => {
+      // Level 2 complete
+      markLevel2Complete();
+      runnerCleanup?.();
+      runnerCleanup = null;
+      launchLevel1();
+    },
+    () => {
+      // Quit back to Level 1 (start menu)
+      runnerCleanup?.();
+      runnerCleanup = null;
+      launchLevel1();
+    },
+  );
+}
+
+function launchLevel1() {
+  gameRoot!.innerHTML = '';
+  mountGame(gameRoot!, { launchLevel2 });
+}
+
+launchLevel1();
