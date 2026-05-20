@@ -65,7 +65,7 @@ type GameState = {
 
 const WIDTH = 960;
 const HEIGHT = 540;
-const WORLD_WIDTH = 7200;
+const WORLD_WIDTH = 9000;
 
 const GRAVITY = 1800;
 const PLAYER_SPEED = 260;
@@ -73,7 +73,7 @@ const JUMP_VELOCITY = -620;
 const GROUND_Y = 470;
 const FALL_DEATH_Y = HEIGHT + 80;
 
-const REQUIRED_SIGS = 20;
+const REQUIRED_SIGS = 23;
 const STORAGE_KEY = 'subphonic-audventures-save-v4';
 
 const clamp = (value: number, min: number, max: number) =>
@@ -174,8 +174,8 @@ export function mountGame(container: HTMLElement): void {
   const chapters: Chapter[] = [
     { name: 'Signal Suburbs', startX: 0, endX: 1800, groundColor: '#5f6f86', groundHighlight: '#a8bdd8', bgTint: 'rgba(40, 60, 90, 0.12)' },
     { name: 'Static Canopy', startX: 1800, endX: 3600, groundColor: '#4a6e5a', groundHighlight: '#8fcbaa', bgTint: 'rgba(30, 80, 50, 0.14)' },
-    { name: 'Frequency Chasm', startX: 3600, endX: 5400, groundColor: '#6e5a4a', groundHighlight: '#d4a878', bgTint: 'rgba(90, 50, 20, 0.12)' },
-    { name: 'Noise Core', startX: 5400, endX: 7200, groundColor: '#6e4a5a', groundHighlight: '#d478a8', bgTint: 'rgba(90, 20, 50, 0.14)' },
+    { name: 'Frequency Chasm', startX: 3600, endX: 6300, groundColor: '#6e5a4a', groundHighlight: '#d4a878', bgTint: 'rgba(90, 50, 20, 0.12)' },
+    { name: 'Noise Core', startX: 6300, endX: 9000, groundColor: '#6e4a5a', groundHighlight: '#d478a8', bgTint: 'rgba(90, 20, 50, 0.14)' },
   ];
 
   // === PITS ===
@@ -194,10 +194,12 @@ export function mountGame(container: HTMLElement): void {
     { x: 3800, y: GROUND_Y, w: 350, h: 80 },
     { x: 4400, y: GROUND_Y, w: 400, h: 80 },
     { x: 5000, y: GROUND_Y, w: 320, h: 80 },
-    // Ch4: dangerous gaps
-    { x: 5600, y: GROUND_Y, w: 250, h: 80 },
-    { x: 6100, y: GROUND_Y, w: 300, h: 80 },
-    { x: 6600, y: GROUND_Y, w: 220, h: 80 },
+    // Ch3 Resonance Spire: MASSIVE chasm - entire vertical section is over the void
+    { x: 5400, y: GROUND_Y, w: 900, h: 80 },
+    // Ch4: dangerous gaps (shifted +900)
+    { x: 6500, y: GROUND_Y, w: 250, h: 80 },
+    { x: 7000, y: GROUND_Y, w: 300, h: 80 },
+    { x: 7500, y: GROUND_Y, w: 220, h: 80 },
   ];
 
   const groundPlatforms = buildGroundPlatforms(WORLD_WIDTH, pits);
@@ -255,18 +257,52 @@ export function mountGame(container: HTMLElement): void {
     // Moving platform bridges third gap
     { x: 5120, y: 440, w: 110, h: 24, moving: true, moveVx: -70, moveLeft: 5050, moveRight: 5300 },
 
-    // Ch4: tight gauntlet (all first-step platforms reachable from ground y≥364)
-    { x: 5500, y: 380, w: 100, h: 24 },
-    { x: 5650, y: 380, w: 90, h: 24 },
-    { x: 5770, y: 340, w: 100, h: 24 },
-    { x: 5920, y: 400, w: 110, h: 24 },
-    { x: 6070, y: 400, w: 100, h: 24 },
-    { x: 6200, y: 370, w: 100, h: 24 },
-    { x: 6350, y: 400, w: 90, h: 24 },
-    { x: 6500, y: 380, w: 100, h: 24 },
-    { x: 6650, y: 400, w: 100, h: 24 },
-    { x: 6800, y: 370, w: 110, h: 24 },
-    { x: 6960, y: 400, w: 120, h: 24 },
+    // Ch3 Resonance Spire: Vertical platforming over the void (x: 5400-6300)
+    // Entry platform from ground level
+    { x: 5380, y: 420, w: 100, h: 24 },
+    // Ascending platforms - zigzag climb
+    { x: 5440, y: 360, w: 90, h: 24 },
+    { x: 5560, y: 310, w: 85, h: 24 },
+    { x: 5440, y: 250, w: 90, h: 24 },
+    { x: 5570, y: 195, w: 85, h: 24 },
+    { x: 5430, y: 135, w: 95, h: 24 },
+    { x: 5560, y: 75, w: 90, h: 24 },
+    { x: 5450, y: 10, w: 85, h: 24 },
+    { x: 5580, y: -50, w: 90, h: 24 },
+    { x: 5450, y: -115, w: 95, h: 24 },
+    // Summit ridge - traverse right along narrow platforms high up
+    { x: 5580, y: -170, w: 80, h: 24 },
+    { x: 5700, y: -170, w: 75, h: 24 },
+    { x: 5820, y: -190, w: 80, h: 24 },
+    { x: 5940, y: -170, w: 75, h: 24 },
+    { x: 6050, y: -150, w: 85, h: 24 },
+    // Moving platforms at the summit
+    { x: 5650, y: -130, w: 70, h: 24, moving: true, moveVx: 50, moveLeft: 5600, moveRight: 5750 },
+    { x: 5900, y: -210, w: 70, h: 24, moving: true, moveVx: -45, moveLeft: 5850, moveRight: 6000 },
+    // Descent on the far side - drops back toward ground
+    { x: 6100, y: -100, w: 85, h: 24 },
+    { x: 6170, y: -30, w: 80, h: 24 },
+    { x: 6100, y: 40, w: 90, h: 24 },
+    { x: 6180, y: 110, w: 80, h: 24 },
+    { x: 6100, y: 180, w: 90, h: 24 },
+    { x: 6180, y: 255, w: 85, h: 24 },
+    { x: 6100, y: 330, w: 95, h: 24 },
+    { x: 6200, y: 400, w: 100, h: 24 },
+    // Landing platform back at ground on far side
+    { x: 6280, y: 430, w: 100, h: 24 },
+
+    // Ch4: tight gauntlet (shifted +900, all first-step platforms reachable from ground)
+    { x: 6400, y: 380, w: 100, h: 24 },
+    { x: 6550, y: 380, w: 90, h: 24 },
+    { x: 6670, y: 340, w: 100, h: 24 },
+    { x: 6820, y: 400, w: 110, h: 24 },
+    { x: 6970, y: 400, w: 100, h: 24 },
+    { x: 7100, y: 370, w: 100, h: 24 },
+    { x: 7250, y: 400, w: 90, h: 24 },
+    { x: 7400, y: 380, w: 100, h: 24 },
+    { x: 7550, y: 400, w: 100, h: 24 },
+    { x: 7700, y: 370, w: 110, h: 24 },
+    { x: 7860, y: 400, w: 120, h: 24 },
   ];
 
   // === SIGS (20 total, ~5 per chapter) ===
@@ -289,12 +325,16 @@ export function mountGame(container: HTMLElement): void {
     { x: 4900, y: 34, w: 18, h: 18, collected: false },
     { x: 5080, y: 364, w: 18, h: 18, collected: false },
     { x: 5210, y: 334, w: 18, h: 18, collected: false },
-    // Ch4
-    { x: 5530, y: 334, w: 18, h: 18, collected: false },
-    { x: 5790, y: 294, w: 18, h: 18, collected: false },
-    { x: 6230, y: 324, w: 18, h: 18, collected: false },
-    { x: 6670, y: 354, w: 18, h: 18, collected: false },
-    { x: 6990, y: 354, w: 18, h: 18, collected: false },
+    // Ch3 Resonance Spire: sigs on the vertical climb
+    { x: 5470, y: 120, w: 18, h: 18, collected: false },
+    { x: 5610, y: -60, w: 18, h: 18, collected: false },
+    { x: 5840, y: -204, w: 18, h: 18, collected: false },
+    // Ch4 (shifted +900)
+    { x: 6430, y: 334, w: 18, h: 18, collected: false },
+    { x: 6690, y: 294, w: 18, h: 18, collected: false },
+    { x: 7130, y: 324, w: 18, h: 18, collected: false },
+    { x: 7570, y: 354, w: 18, h: 18, collected: false },
+    { x: 7890, y: 354, w: 18, h: 18, collected: false },
   ];
 
   // === ENEMIES ===
@@ -312,12 +352,17 @@ export function mountGame(container: HTMLElement): void {
     { x: 3960, y: 336, w: 34, h: 34, vx: 70, leftBound: 3950, rightBound: 4035, alive: true },
     { x: 4560, y: 346, w: 34, h: 34, vx: -65, leftBound: 4550, rightBound: 4640, alive: true },
     { x: 5060, y: 376, w: 36, h: 36, vx: 80, leftBound: 5020, rightBound: 5120, alive: true },
-    // Ch4: fast and aggressive
-    { x: 5670, y: 346, w: 38, h: 38, vx: -120, leftBound: 5650, rightBound: 5740, alive: true },
-    { x: 5940, y: 362, w: 38, h: 38, vx: 110, leftBound: 5920, rightBound: 6030, alive: true },
-    { x: 6220, y: 332, w: 38, h: 38, vx: -115, leftBound: 6200, rightBound: 6300, alive: true },
-    { x: 6520, y: 342, w: 40, h: 40, vx: 125, leftBound: 6500, rightBound: 6600, alive: true },
-    { x: 6820, y: 330, w: 40, h: 40, vx: -130, leftBound: 6800, rightBound: 6910, alive: true },
+    // Ch3 Resonance Spire: enemies on the high platforms
+    { x: 5600, y: 271, w: 34, h: 34, vx: 60, leftBound: 5560, rightBound: 5645, alive: true },
+    { x: 5710, y: -204, w: 34, h: 34, vx: -55, leftBound: 5700, rightBound: 5775, alive: true },
+    { x: 5950, y: -204, w: 34, h: 34, vx: 50, leftBound: 5940, rightBound: 6015, alive: true },
+    { x: 6110, y: -134, w: 34, h: 34, vx: -55, leftBound: 6100, rightBound: 6185, alive: true },
+    // Ch4: fast and aggressive (shifted +900)
+    { x: 6570, y: 346, w: 38, h: 38, vx: -120, leftBound: 6550, rightBound: 6640, alive: true },
+    { x: 6840, y: 362, w: 38, h: 38, vx: 110, leftBound: 6820, rightBound: 6930, alive: true },
+    { x: 7120, y: 332, w: 38, h: 38, vx: -115, leftBound: 7100, rightBound: 7200, alive: true },
+    { x: 7420, y: 342, w: 40, h: 40, vx: 125, leftBound: 7400, rightBound: 7500, alive: true },
+    { x: 7720, y: 330, w: 40, h: 40, vx: -130, leftBound: 7700, rightBound: 7810, alive: true },
   ];
 
   // === LADDERS (mainly Ch2, some in Ch3) ===
@@ -328,7 +373,7 @@ export function mountGame(container: HTMLElement): void {
     { x: 3510, y: 260, w: 36, h: 210 },      // Ch2/3 transition
     { x: 4870, y: -220, w: 36, h: 600 },      // Ch3: Patrick's tower ladder (very tall)
     { x: 5040, y: 250, w: 36, h: 220 },      // Ch3: access upper area
-    { x: 6730, y: 300, w: 36, h: 170 },      // Ch4: access final platforms
+    { x: 7630, y: 300, w: 36, h: 170 },      // Ch4: access final platforms
   ];
 
   // === CHECKPOINTS ===
@@ -338,11 +383,12 @@ export function mountGame(container: HTMLElement): void {
     { x: 2700, y: 402, activated: false, spinTimer: 0 },
     { x: 3600, y: 402, activated: false, spinTimer: 0 },
     { x: 4800, y: 402, activated: false, spinTimer: 0 },
-    { x: 5400, y: 402, activated: false, spinTimer: 0 },
-    { x: 6400, y: 402, activated: false, spinTimer: 0 },
+    { x: 5380, y: 402, activated: false, spinTimer: 0 },
+    { x: 6300, y: 402, activated: false, spinTimer: 0 },
+    { x: 7300, y: 402, activated: false, spinTimer: 0 },
   ];
 
-  const gate = { x: 7080, y: 402, w: 34, h: 68, open: false };
+  const gate = { x: 8880, y: 402, w: 34, h: 68, open: false };
 
   // === PATRICK NPC (hidden far above screen in Ch3, gives key) ===
   const patrick: NPC = { x: 4920, y: -274, w: 42, h: 54, name: 'Patrick', talked: false, questionAnswered: state.hasKey };
@@ -474,6 +520,8 @@ export function mountGame(container: HTMLElement): void {
   let showingStory = false; // showing story pages from menu
   let storyPageFromMenu = 0;
   let fallDeathActive = false; // NEW: falling animation instead of explode
+  let hintsEnabled = true; // Toggle tutorial popups (H key)
+  let quitConfirmActive = false; // Q pressed, awaiting confirmation
   let infoMessage = 'Sonia has entered Acoustica Nightphase.';
   let chapterBanner = '';
   let chapterBannerTimer = 0;
@@ -697,6 +745,40 @@ export function mountGame(container: HTMLElement): void {
       if (keys['1']) { leaderboardOverlayTab = 'score'; keys['1'] = false; }
       if (keys['2']) { leaderboardOverlayTab = 'time'; keys['2'] = false; }
       return;
+    }
+
+    // Quit confirmation (Q key)
+    if (keys.q && !introActive && !won && !startMenuActive && !quitConfirmActive) {
+      quitConfirmActive = true;
+      keys.q = false;
+    }
+    if (quitConfirmActive) {
+      if (keys.y) {
+        // Confirmed quit — return to main menu
+        keys.y = false;
+        quitConfirmActive = false;
+        running = false;
+        startMenuActive = true;
+        startMenuSelection = 0;
+        introActive = true;
+        introPage = 0;
+        introFadeAlpha = 1;
+        missionTimerRunning = false;
+        return;
+      }
+      if (keys.n || keys.escape) {
+        quitConfirmActive = false;
+        keys.n = false;
+        keys.escape = false;
+      }
+      return;
+    }
+
+    // Toggle hints (H key)
+    if (keys.h && !introActive && !won && !startMenuActive) {
+      hintsEnabled = !hintsEnabled;
+      infoMessage = hintsEnabled ? 'Hints enabled' : 'Hints disabled';
+      keys.h = false;
     }
 
     // Pause during death animation
@@ -1112,18 +1194,20 @@ export function mountGame(container: HTMLElement): void {
         const remaining = REQUIRED_SIGS - state.insight;
         if (!firstSigCollected) {
           firstSigCollected = true;
-          tutorialPopup = {
-            title: 'SIGNAL FRAGMENT COLLECTED!',
-            lines: [
-              'You collected a SIG — a fragment of pure signal.',
-              'SIGs are echoes of Acoustica\'s original harmony,',
-              'scattered when Lord Noise corrupted the land.',
-              '',
-              'Each SIG you collect lifts the darkness a little,',
-              'restoring clarity to Acoustica.',
-              `Collect ${REQUIRED_SIGS} to open the gate.`,
-            ],
-          };
+          if (hintsEnabled) {
+            tutorialPopup = {
+              title: 'SIGNAL FRAGMENT COLLECTED!',
+              lines: [
+                'You collected a SIG — a fragment of pure signal.',
+                'SIGs are echoes of Acoustica\'s original harmony,',
+                'scattered when Lord Noise corrupted the land.',
+                '',
+                'Each SIG you collect lifts the darkness a little,',
+                'restoring clarity to Acoustica.',
+                `Collect ${REQUIRED_SIGS} to open the gate.`,
+              ],
+            };
+          }
         } else if (remaining > 0) {
           infoMessage = `Signal captured! ${remaining} more to open the gate.`;
         } else {
@@ -1165,11 +1249,13 @@ export function mountGame(container: HTMLElement): void {
         const dist = Math.abs((player.x + player.w / 2) - (enemy.x + enemy.w / 2));
         if (dist < 150 && Math.abs(player.y - enemy.y) < 100) {
           firstEnemyEncountered = true;
-          tutorialPopup = {
-            title: 'ENEMY BOTS DETECTED!',
-            showBots: true,
-            lines: [],
-          };
+          if (hintsEnabled) {
+            tutorialPopup = {
+              title: 'ENEMY BOTS DETECTED!',
+              showBots: true,
+              lines: [],
+            };
+          }
           break;
         }
       }
@@ -1223,9 +1309,9 @@ export function mountGame(container: HTMLElement): void {
     }
 
     cameraX = clamp(player.x - WIDTH * 0.35, 0, WORLD_WIDTH - WIDTH);
-    // Vertical camera: follow player when they go above the visible threshold
-    const targetCameraY = player.y < 100 ? Math.min(0, player.y - 150) : 0;
-    cameraY += (targetCameraY - cameraY) * 0.08; // smooth lerp
+    // Vertical camera: follow player when above visible threshold (smooth for spire section)
+    const targetCameraY = player.y < 200 ? player.y - 250 : 0;
+    cameraY += (targetCameraY - cameraY) * 0.1; // smooth lerp
     persistState(state);
 
     // Update animation state
@@ -3150,7 +3236,7 @@ export function mountGame(container: HTMLElement): void {
         // Controls
         ctx.fillStyle = '#444';
         ctx.font = '10px monospace';
-        ctx.fillText('ARROWS/WASD to move • SPACE to jump • UP/DOWN to select', WIDTH / 2, HEIGHT - 45);
+        ctx.fillText('ARROWS/WASD: move • SPACE: jump • H: hints • L: leaderboard • Q: quit', WIDTH / 2, HEIGHT - 45);
       }
 
       // Border
@@ -3466,6 +3552,32 @@ export function mountGame(container: HTMLElement): void {
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
       ctx.fillText('Press 1/2 to switch tabs • L, SPACE or ESC to close', WIDTH / 2, HEIGHT - 70);
+      ctx.textAlign = 'left';
+    }
+
+    // Quit confirmation overlay
+    if (quitConfirmActive) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('QUIT GAME?', WIDTH / 2, HEIGHT / 2 - 40);
+      ctx.fillStyle = '#cccccc';
+      ctx.font = '14px monospace';
+      ctx.fillText('Your progress is saved at your last checkpoint.', WIDTH / 2, HEIGHT / 2);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText('[Y] Yes, quit to menu    [N] No, keep playing', WIDTH / 2, HEIGHT / 2 + 50);
+      ctx.textAlign = 'left';
+    }
+
+    // HUD controls hint (bottom-right)
+    if (!introActive && !won && !startMenuActive && !gameOver && running) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText('H: toggle hints • L: leaderboard • Q: quit', WIDTH - 12, HEIGHT - 8);
       ctx.textAlign = 'left';
     }
   };
