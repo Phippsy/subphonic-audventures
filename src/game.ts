@@ -1,4 +1,4 @@
-import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife } from './audio';
+import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
 import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
 
 export type Rect = {
@@ -468,6 +468,12 @@ export function mountGame(container: HTMLElement): void {
   let introPage = 0;
   let introPageTimer = 0;
   let introFadeAlpha = 0;
+  let startMenuActive = true; // NEW: splash/start screen
+  let startMenuSelection = 0; // 0=New Game, 1=Leaderboard, 2=Story
+  let startMenuLeaderboardTab: 'score' | 'time' = 'score';
+  let showingStory = false; // showing story pages from menu
+  let storyPageFromMenu = 0;
+  let fallDeathActive = false; // NEW: falling animation instead of explode
   let infoMessage = 'Sonia has entered Acoustica Nightphase.';
   let chapterBanner = '';
   let chapterBannerTimer = 0;
@@ -512,41 +518,14 @@ export function mountGame(container: HTMLElement): void {
   // Multi-page intro story
   const introPages = [
     {
-      title: 'ACOUSTICA',
+      title: 'THE WORLD OF ACOUSTICA',
       lines: [
-        'A land shaped by sound.',
-        'Every brook, birdsong, and breeze',
-        'carries meaning through its valleys.',
+        'A land shaped by sound, where every voice was heard.',
+        'Lord Noise rose from the static, spreading',
+        'interference with his MuffleBots and DistortBots.',
         '',
-        'For generations, the people of Acoustica',
-        'lived in harmony with the signal—',
-        'a world where every voice was heard.',
-      ],
-    },
-    {
-      title: 'THE CORRUPTION',
-      lines: [
-        'Lord Noise rose from the static.',
-        'His MuffleBots and DistortBots spread',
-        'interference across the land,',
-        'drowning out clarity with chaos.',
-        '',
-        'Darkness fell over Acoustica.',
-        'Conversations became unintelligible.',
-        'Understanding itself began to fade.',
-      ],
-    },
-    {
-      title: 'SONIA',
-      lines: [
-        'She was Subphonic\'s finest signal analyst.',
-        'Where others heard noise, she found meaning.',
-        'Birdsong, music, a baby\'s laughter,',
-        'the wind in the trees—she loved them all.',
-        '',
-        'Now she is Acoustica\'s last hope.',
-        'Armed with her headphones and her wits,',
-        'she steps into the Nightphase.',
+        'Sonia, Subphonic\'s finest signal analyst,',
+        'steps into the Nightphase to restore harmony.',
       ],
     },
     {
@@ -558,8 +537,7 @@ export function mountGame(container: HTMLElement): void {
         'Find Patrick, the Compliance Officer,',
         'and earn the key to open the final gate.',
         '',
-        'Defeat Lord Noise.',
-        'Restore harmony to Acoustica.',
+        'Defeat Lord Noise. Restore Acoustica.',
       ],
     },
   ];
@@ -640,6 +618,7 @@ export function mountGame(container: HTMLElement): void {
     persistState(state);
     placeAtCheckpoint();
   };
+  void handleDeath; // kept for non-pit deaths (future use)
 
   const handleEnemyDamage = (reason: string, chapter: number) => {
     // MuffleBots (Ch1-2): 1 damage per hit (3 hits to die)
@@ -656,6 +635,26 @@ export function mountGame(container: HTMLElement): void {
     deathAnimX = player.x;
     deathAnimY = player.y;
     deathAnimTimer = 1.0;
+    playerVisible = false;
+    if (state.lives < 0) {
+      gameOver = true;
+      gameOverTimer = 0;
+      running = false;
+      return;
+    }
+    persistState(state);
+    placeAtCheckpoint();
+  };
+
+  const handleFallDeath = (reason: string) => {
+    state.lives -= 1;
+    sfxFall();
+    infoMessage = reason;
+    // Fall animation — player drops off screen
+    deathAnimX = player.x;
+    deathAnimY = player.y;
+    deathAnimTimer = 1.2;
+    fallDeathActive = true;
     playerVisible = false;
     if (state.lives < 0) {
       gameOver = true;
@@ -704,10 +703,81 @@ export function mountGame(container: HTMLElement): void {
     if (deathAnimTimer > 0) {
       animTime += dt;
       deathAnimTimer -= dt;
+      if (deathAnimTimer <= 0) {
+        fallDeathActive = false;
+      }
       return;
     }
 
     const startPressed = keys[' '] || keys.enter;
+
+    // Start menu
+    if (startMenuActive) {
+      introFadeAlpha = Math.min(1, introFadeAlpha + dt * 2);
+      if (showingStory) {
+        // Story pages from menu
+        if (startPressed) {
+          keys[' '] = false;
+          keys.enter = false;
+          if (storyPageFromMenu < introPages.length - 1) {
+            storyPageFromMenu++;
+          } else {
+            showingStory = false;
+            storyPageFromMenu = 0;
+          }
+        }
+        if (keys.escape) {
+          keys.escape = false;
+          showingStory = false;
+          storyPageFromMenu = 0;
+        }
+      } else if (startMenuSelection === 1 && keys.escape) {
+        // Back from leaderboard view in menu
+        keys.escape = false;
+        startMenuSelection = 0;
+      } else {
+        if (keys.arrowup || keys.w) {
+          startMenuSelection = (startMenuSelection + 2) % 3;
+          keys.arrowup = false;
+          keys.w = false;
+          sfxMenuSelect();
+        }
+        if (keys.arrowdown || keys.s) {
+          startMenuSelection = (startMenuSelection + 1) % 3;
+          keys.arrowdown = false;
+          keys.s = false;
+          sfxMenuSelect();
+        }
+        if (startPressed) {
+          keys[' '] = false;
+          keys.enter = false;
+          if (startMenuSelection === 0) {
+            // New Game
+            startMenuActive = false;
+            introActive = false;
+            missionTimerRunning = true;
+            missionTimer = 0;
+            infoMessage = 'Mission live. Move right and restore Acoustica.';
+            chapterBanner = chapters[0].name;
+            chapterBannerTimer = 3;
+            initAudio();
+            startBGM();
+          } else if (startMenuSelection === 1) {
+            // Leaderboard — handled in draw (just stays in menu)
+          } else if (startMenuSelection === 2) {
+            // Story
+            showingStory = true;
+            storyPageFromMenu = 0;
+          }
+        }
+        if (startMenuSelection === 1) {
+          if (keys['1']) { startMenuLeaderboardTab = 'score'; keys['1'] = false; }
+          if (keys['2']) { startMenuLeaderboardTab = 'time'; keys['2'] = false; }
+        }
+      }
+      return;
+    }
+
     if (introActive) {
       // Fade in the current page
       introPageTimer += dt;
@@ -997,12 +1067,12 @@ export function mountGame(container: HTMLElement): void {
     // Pit death
     for (const pit of pits) {
       if (overlap(player, pit)) {
-        handleDeath('Sonia was swallowed by static in a noise pit.');
+        handleFallDeath('Sonia was swallowed by a noise pit.');
         return;
       }
     }
     if (player.y > FALL_DEATH_Y) {
-      handleDeath('Sonia fell out of Acoustica.');
+      handleFallDeath('Sonia fell into the void.');
       return;
     }
 
@@ -2641,34 +2711,57 @@ export function mountGame(container: HTMLElement): void {
 
     // Death animation effect (at old position)
     if (deathAnimTimer > 0) {
-      const progress = 1 - deathAnimTimer; // 0..1
-      const dx = deathAnimX - cameraX + player.w / 2;
-      const dy = deathAnimY + player.h / 2;
-      // Expanding red ring
-      ctx.strokeStyle = `rgba(255, 60, 60, ${(1 - progress) * 0.8})`;
-      ctx.lineWidth = 3 - progress * 2;
-      ctx.beginPath();
-      ctx.arc(dx, dy, progress * 50 + 10, 0, Math.PI * 2);
-      ctx.stroke();
-      // Fragmenting pixels flying outward
-      for (let i = 0; i < 16; i++) {
-        const angle = (i / 16) * Math.PI * 2 + i * 0.5;
-        const dist = progress * 80;
-        const px = dx + Math.cos(angle) * dist;
-        const py = dy + Math.sin(angle) * dist - progress * 20;
-        const alpha = (1 - progress) * 0.9;
-        const colors = ['#ff4040', '#ff8080', '#ffffff', '#00ff00'];
-        ctx.fillStyle = colors[i % 4].replace(')', `, ${alpha})`).replace('#', 'rgba(');
-        // Simpler: just use the color with opacity
+      if (fallDeathActive) {
+        // Falling animation — Sonia drops down with shrinking silhouette
+        const progress = 1 - (deathAnimTimer / 1.2); // 0..1
+        const dx = deathAnimX - cameraX + player.w / 2;
+        const dy = deathAnimY + player.h / 2 + progress * 120;
+        const scale = 1 - progress * 0.7;
+        const alpha = 1 - progress;
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = colors[i % 4];
-        ctx.fillRect(px - 2, py - 2, 4 + (i % 2), 4 + (i % 2));
-      }
-      ctx.globalAlpha = 1;
-      // Flash
-      if (progress < 0.15) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${(0.15 - progress) * 4})`;
-        ctx.fillRect(dx - 40, dy - 40, 80, 80);
+        ctx.fillStyle = '#2a2a3a';
+        ctx.fillRect(dx - 10 * scale, dy - 14 * scale, 20 * scale, 28 * scale);
+        // Motion lines above
+        ctx.strokeStyle = `rgba(150, 150, 180, ${alpha * 0.6})`;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) {
+          const lx = dx + (i - 1.5) * 8;
+          const ly = dy - 20 * scale - i * 6;
+          ctx.beginPath();
+          ctx.moveTo(lx, ly);
+          ctx.lineTo(lx, ly - 15 - progress * 20);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        // Explosion animation (original)
+        const progress = 1 - deathAnimTimer; // 0..1
+        const dx = deathAnimX - cameraX + player.w / 2;
+        const dy = deathAnimY + player.h / 2;
+        // Expanding red ring
+        ctx.strokeStyle = `rgba(255, 60, 60, ${(1 - progress) * 0.8})`;
+        ctx.lineWidth = 3 - progress * 2;
+        ctx.beginPath();
+        ctx.arc(dx, dy, progress * 50 + 10, 0, Math.PI * 2);
+        ctx.stroke();
+        // Fragmenting pixels flying outward
+        for (let i = 0; i < 16; i++) {
+          const angle = (i / 16) * Math.PI * 2 + i * 0.5;
+          const dist = progress * 80;
+          const px = dx + Math.cos(angle) * dist;
+          const py = dy + Math.sin(angle) * dist - progress * 20;
+          const alpha = (1 - progress) * 0.9;
+          const colors = ['#ff4040', '#ff8080', '#ffffff', '#00ff00'];
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = colors[i % 4];
+          ctx.fillRect(px - 2, py - 2, 4 + (i % 2), 4 + (i % 2));
+        }
+        ctx.globalAlpha = 1;
+        // Flash
+        if (progress < 0.15) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${(0.15 - progress) * 4})`;
+          ctx.fillRect(dx - 40, dy - 40, 80, 80);
+        }
       }
     }
 
@@ -2937,72 +3030,176 @@ export function mountGame(container: HTMLElement): void {
       ctx.textAlign = 'left';
     }
 
-    // Intro overlay (multi-page)
-    if (introActive) {
+    // Start menu / Intro overlay
+    if (startMenuActive) {
+      const alpha = introFadeAlpha;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.97)';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Particle decoration
+      ctx.fillStyle = `rgba(0, 255, 0, ${0.05 * alpha})`;
+      for (let i = 0; i < 60; i++) {
+        const px2 = ((i * 137 + 50) % WIDTH);
+        const py2 = ((i * 97 + 20 + Math.sin(animTime + i) * 3) % HEIGHT);
+        ctx.fillRect(px2, py2, 2, 2);
+      }
+
+      ctx.globalAlpha = alpha;
+      // Logo
+      drawSubphonicLogo(WIDTH / 2 - 22, 20, 44);
+
+      ctx.textAlign = 'center';
+      // Title
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '28px monospace';
+      ctx.fillText('SUBPHONIC AUDVENTURES', WIDTH / 2, 92);
+
+      // Subtitle
+      ctx.fillStyle = '#888';
+      ctx.font = '12px monospace';
+      ctx.fillText('A retro platformer by Subphonic', WIDTH / 2, 115);
+
+      // Separator
+      ctx.fillStyle = `rgba(0, 255, 0, ${0.4 * alpha})`;
+      ctx.fillRect(WIDTH / 2 - 100, 128, 200, 1);
+
+      if (showingStory) {
+        // Story page view
+        const page = introPages[storyPageFromMenu];
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '18px monospace';
+        ctx.fillText(page.title, WIDTH / 2, 165);
+        ctx.font = '14px monospace';
+        ctx.fillStyle = '#cccccc';
+        page.lines.forEach((line, i) => {
+          if (line === '') return;
+          ctx.fillText(line, WIDTH / 2, 200 + i * 26);
+        });
+        const storyDots = introPages.map((_, i) => i === storyPageFromMenu ? '●' : '○').join(' ');
+        ctx.fillStyle = '#555';
+        ctx.font = '10px monospace';
+        ctx.fillText(storyDots, WIDTH / 2, HEIGHT - 70);
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px monospace';
+        if (storyPageFromMenu < introPages.length - 1) {
+          ctx.fillText('SPACE/ENTER to continue • ESC to go back', WIDTH / 2, HEIGHT - 45);
+        } else {
+          ctx.fillText('SPACE/ENTER or ESC to return to menu', WIDTH / 2, HEIGHT - 45);
+        }
+      } else if (startMenuSelection === 1) {
+        // Leaderboard view within menu
+        const scoreActive = startMenuLeaderboardTab === 'score';
+        ctx.fillStyle = scoreActive ? '#00ff00' : '#555';
+        ctx.font = scoreActive ? 'bold 13px monospace' : '13px monospace';
+        ctx.fillText('[1] SCORE', WIDTH / 2 - 80, 158);
+        ctx.fillStyle = !scoreActive ? '#00ff00' : '#555';
+        ctx.font = !scoreActive ? 'bold 13px monospace' : '13px monospace';
+        ctx.fillText('[2] SPEEDRUN', WIDTH / 2 + 80, 158);
+
+        ctx.font = '12px monospace';
+        const startY = 185;
+        if (startMenuLeaderboardTab === 'score') {
+          const board = getLeaderboard();
+          if (board.length === 0) {
+            ctx.fillStyle = '#666';
+            ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 250);
+          } else {
+            for (let i = 0; i < Math.min(board.length, 10); i++) {
+              ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+              const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+              const name = board[i].name.padEnd(16, ' ');
+              const score = board[i].score.toString().padStart(8, ' ');
+              ctx.fillText(`${rank} ${name} ${score}  ${board[i].date}`, WIDTH / 2, startY + i * 22);
+            }
+          }
+        } else {
+          const board = getTimeLeaderboard();
+          if (board.length === 0) {
+            ctx.fillStyle = '#666';
+            ctx.fillText('No entries yet. Be the first!', WIDTH / 2, 250);
+          } else {
+            for (let i = 0; i < Math.min(board.length, 10); i++) {
+              ctx.fillStyle = i === 0 ? '#ffdd44' : i < 3 ? '#00ff00' : '#cccccc';
+              const rank = `${(i + 1).toString().padStart(2, ' ')}.`;
+              const name = board[i].name.padEnd(16, ' ');
+              const time = formatTime(board[i].time).padStart(8, ' ');
+              ctx.fillText(`${rank} ${name} ${time}  ${board[i].date}`, WIDTH / 2, startY + i * 22);
+            }
+          }
+        }
+        ctx.fillStyle = '#555';
+        ctx.font = '11px monospace';
+        ctx.fillText('Press 1/2 to switch • ESC to go back', WIDTH / 2, HEIGHT - 45);
+      } else {
+        // Main menu options
+        const menuItems = ['NEW GAME', 'LEADERBOARD', 'STORY'];
+        const menuY = 170;
+        menuItems.forEach((item, i) => {
+          const selected = i === startMenuSelection;
+          ctx.fillStyle = selected ? '#00ff00' : '#666666';
+          ctx.font = selected ? 'bold 18px monospace' : '16px monospace';
+          const prefix = selected ? '▶ ' : '  ';
+          ctx.fillText(prefix + item, WIDTH / 2, menuY + i * 45);
+        });
+
+        // Game description
+        ctx.fillStyle = '#555';
+        ctx.font = '11px monospace';
+        ctx.fillText('Navigate Acoustica • Collect signals • Defeat Lord Noise', WIDTH / 2, 330);
+
+        // Controls
+        ctx.fillStyle = '#444';
+        ctx.font = '10px monospace';
+        ctx.fillText('ARROWS/WASD to move • SPACE to jump • UP/DOWN to select', WIDTH / 2, HEIGHT - 45);
+      }
+
+      // Border
+      ctx.strokeStyle = `rgba(0, 255, 0, ${0.2 * alpha})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(40, 25, WIDTH - 80, HEIGHT - 50);
+
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'left';
+    }
+
+    if (introActive && !startMenuActive) {
       const page = introPages[introPage];
       const alpha = introFadeAlpha;
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.96)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      // Particle decoration (Subphonic brand feel)
-      ctx.fillStyle = `rgba(0, 255, 0, ${0.06 * alpha})`;
-      for (let i = 0; i < 60; i++) {
-        const px2 = ((i * 137 + 50 + introPage * 30) % WIDTH);
-        const py2 = ((i * 97 + 20 + introPage * 17) % HEIGHT);
-        ctx.fillRect(px2, py2, 2, 2);
-      }
-
-      // Subphonic logo
       ctx.globalAlpha = alpha;
       drawSubphonicLogo(WIDTH / 2 - 22, 20, 44);
 
-      // Title
       ctx.fillStyle = '#ffffff';
       ctx.font = '28px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('SUBPHONIC AUDVENTURES', WIDTH / 2, 92);
 
-      // Page indicator
-      ctx.fillStyle = '#00ff00';
-      ctx.font = '10px monospace';
-      const dots = introPages.map((_, i) => i === introPage ? '●' : '○').join(' ');
-      ctx.fillText(dots, WIDTH / 2, 112);
-
-      // Separator
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 * alpha})`;
-      ctx.fillRect(WIDTH / 2 - 100, 122, 200, 1);
+      ctx.fillRect(WIDTH / 2 - 100, 112, 200, 1);
 
-      // Page title
       ctx.fillStyle = '#00ff00';
       ctx.font = '18px monospace';
-      ctx.fillText(page.title, WIDTH / 2, 154);
+      ctx.fillText(page.title, WIDTH / 2, 144);
 
-      // Story lines
       ctx.font = '14px monospace';
       ctx.fillStyle = '#cccccc';
-      const lineStartY = 185;
+      const lineStartY = 175;
       page.lines.forEach((line, i) => {
         if (line === '') return;
-        ctx.fillStyle = '#cccccc';
         ctx.fillText(line, WIDTH / 2, lineStartY + i * 26);
       });
 
-      // Navigation hint
       ctx.fillStyle = '#00ff00';
       ctx.font = '12px monospace';
       if (introPage < introPages.length - 1) {
         ctx.fillText('Press SPACE or ENTER to continue...', WIDTH / 2, HEIGHT - 50);
       } else {
-        ctx.fillText('Press SPACE or ENTER to begin your adventure!', WIDTH / 2, HEIGHT - 50);
+        ctx.fillText('Press SPACE or ENTER to begin!', WIDTH / 2, HEIGHT - 50);
       }
 
-      // Controls hint at bottom
-      ctx.fillStyle = '#444';
-      ctx.font = '10px monospace';
-      ctx.fillText('ARROWS/WASD to move • SPACE to jump • UP/DOWN to climb', WIDTH / 2, HEIGHT - 25);
-
-      // Border
       ctx.strokeStyle = `rgba(0, 255, 0, ${0.2 * alpha})`;
       ctx.lineWidth = 1;
       ctx.strokeRect(40, 25, WIDTH - 80, HEIGHT - 50);

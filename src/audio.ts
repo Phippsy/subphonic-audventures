@@ -418,6 +418,25 @@ export const sfxExtraLife = () => {
   pad.stop(ac.currentTime + 1.2);
 };
 
+export const sfxFall = () => {
+  // Falling into a pit: descending whistle with doppler + fading echo
+  const ac = ensureContext();
+  // Falling whistle
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(900, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 1.2);
+  gain.gain.setValueAtTime(0.18, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 1.2);
+  // Wind whoosh (filtered noise)
+  playNoise(1.0, 0.12, 800, 'lowpass');
+};
+
 // Initialize audio on first user interaction
 export const initAudio = () => {
   ensureContext();
