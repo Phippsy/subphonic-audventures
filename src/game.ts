@@ -2396,38 +2396,240 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.textAlign = 'left';
   };
 
+  // Patrick portrait (high-detail for dialog screens)
+  const drawPatrickPortrait = (px: number, py: number) => {
+    const cx = px + 40; // center x
+
+    // === BODY / SUIT ===
+    // Shoulders & torso (sharp charcoal suit)
+    ctx.fillStyle = '#1e1e2e';
+    ctx.beginPath();
+    ctx.ellipse(cx, py + 72, 30, 16, 0, Math.PI, 0, true);
+    ctx.fill();
+    // Suit jacket body
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(cx - 22, py + 56, 44, 20);
+    // Lapels
+    ctx.fillStyle = '#353545';
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, py + 56);
+    ctx.lineTo(cx - 14, py + 72);
+    ctx.lineTo(cx - 6, py + 72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 6, py + 56);
+    ctx.lineTo(cx + 14, py + 72);
+    ctx.lineTo(cx + 6, py + 72);
+    ctx.closePath();
+    ctx.fill();
+    // White shirt visible
+    ctx.fillStyle = '#e8eef4';
+    ctx.fillRect(cx - 5, py + 56, 10, 16);
+    // Tie (subphonic green, with knot)
+    ctx.fillStyle = '#00cc44';
+    ctx.beginPath();
+    ctx.moveTo(cx, py + 56);
+    ctx.lineTo(cx - 3, py + 59);
+    ctx.lineTo(cx - 2, py + 72);
+    ctx.lineTo(cx + 2, py + 72);
+    ctx.lineTo(cx + 3, py + 59);
+    ctx.closePath();
+    ctx.fill();
+    // Tie knot
+    ctx.fillStyle = '#009933';
+    ctx.beginPath();
+    ctx.ellipse(cx, py + 57, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Pocket square
+    ctx.fillStyle = '#cc0000';
+    ctx.beginPath();
+    ctx.moveTo(cx + 14, py + 58);
+    ctx.lineTo(cx + 11, py + 63);
+    ctx.lineTo(cx + 17, py + 63);
+    ctx.closePath();
+    ctx.fill();
+
+    // === HEAD ===
+    // Neck
+    ctx.fillStyle = '#e0c090';
+    ctx.fillRect(cx - 5, py + 48, 10, 10);
+    // Head shape
+    ctx.fillStyle = '#e8c8a0';
+    ctx.beginPath();
+    ctx.roundRect(cx - 14, py + 18, 28, 32, 8);
+    ctx.fill();
+    // Ears
+    ctx.fillStyle = '#dbb890';
+    ctx.beginPath();
+    ctx.ellipse(cx - 14, py + 34, 4, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 14, py + 34, 4, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === HAIR (short, professional, dark brown) ===
+    ctx.fillStyle = '#3a2a1a';
+    ctx.beginPath();
+    ctx.roundRect(cx - 14, py + 16, 28, 12, [8, 8, 0, 0]);
+    ctx.fill();
+    // Side hair
+    ctx.fillRect(cx - 15, py + 22, 4, 10);
+    ctx.fillRect(cx + 11, py + 22, 4, 10);
+    // Hair highlight
+    ctx.fillStyle = '#4a3a2a';
+    ctx.beginPath();
+    ctx.roundRect(cx - 6, py + 17, 12, 5, 3);
+    ctx.fill();
+
+    // === GLASSES (signature look) ===
+    // Frames
+    ctx.strokeStyle = '#1a1a2a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(cx - 12, py + 30, 10, 8, 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.roundRect(cx + 2, py + 30, 10, 8, 2);
+    ctx.stroke();
+    // Bridge
+    ctx.beginPath();
+    ctx.moveTo(cx - 2, py + 33);
+    ctx.lineTo(cx + 2, py + 33);
+    ctx.stroke();
+    // Temple arms
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 12, py + 32);
+    ctx.lineTo(cx - 15, py + 31);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 12, py + 32);
+    ctx.lineTo(cx + 15, py + 31);
+    ctx.stroke();
+    // Lenses (blue tint)
+    ctx.fillStyle = 'rgba(160, 210, 255, 0.5)';
+    ctx.beginPath();
+    ctx.roundRect(cx - 11, py + 31, 8, 6, 1.5);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(cx + 3, py + 31, 8, 6, 1.5);
+    ctx.fill();
+    // Lens shine
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, py + 32, 2, 1.5, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, py + 32, 2, 1.5, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === EYES (behind glasses) ===
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, py + 34, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 7, py + 34, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Irises (sharp brown)
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath();
+    ctx.arc(cx - 7, py + 34, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, py + 34, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === EXPRESSION (slight knowing smirk) ===
+    ctx.strokeStyle = '#7a5040';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(cx, py + 42, 4, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+    // Nose
+    ctx.strokeStyle = '#c0a080';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, py + 36);
+    ctx.lineTo(cx - 1, py + 40);
+    ctx.lineTo(cx + 1, py + 40);
+    ctx.stroke();
+
+    // === WINE GLASS (held in right hand) ===
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(cx + 22, py + 56, 5, 12); // arm
+    ctx.fillStyle = '#e0c090';
+    ctx.fillRect(cx + 22, py + 66, 5, 4); // hand
+    // Glass
+    ctx.strokeStyle = 'rgba(200, 220, 255, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + 24, py + 62);
+    ctx.lineTo(cx + 22, py + 55);
+    ctx.lineTo(cx + 28, py + 55);
+    ctx.lineTo(cx + 26, py + 62);
+    ctx.stroke();
+    // Wine
+    ctx.fillStyle = 'rgba(120, 20, 40, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(cx + 23, py + 58);
+    ctx.lineTo(cx + 22.5, py + 55);
+    ctx.lineTo(cx + 27.5, py + 55);
+    ctx.lineTo(cx + 27, py + 58);
+    ctx.closePath();
+    ctx.fill();
+    // Stem
+    ctx.strokeStyle = 'rgba(200, 220, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + 25, py + 62);
+    ctx.lineTo(cx + 25, py + 67);
+    ctx.stroke();
+    // Base
+    ctx.beginPath();
+    ctx.moveTo(cx + 23, py + 67);
+    ctx.lineTo(cx + 27, py + 67);
+    ctx.stroke();
+  };
+
   const drawPatrickDialog = () => {
     if (!patrickDialogActive) return;
 
     // Overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.93)';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Dialog box
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(80, 60, WIDTH - 160, HEIGHT - 120);
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(80, 60, WIDTH - 160, HEIGHT - 120);
+    // Portrait (always visible, no flicker)
+    drawPatrickPortrait(WIDTH / 2 - 40, 20);
 
-    // Patrick's name
+    // Name label
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#00ff00';
-    ctx.font = '16px monospace';
-    ctx.fillText('PATRICK - Compliance Officer', 110, 95);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('PATRICK - Compliance Officer', WIDTH / 2, 112);
+    ctx.textAlign = 'left';
 
-    // Separator
-    ctx.fillStyle = '#00ff00';
-    ctx.fillRect(100, 105, WIDTH - 200, 1);
+    // Dialog box (below portrait)
+    ctx.fillStyle = 'rgba(5, 10, 5, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(80, 125, WIDTH - 160, HEIGHT - 180, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(80, 125, WIDTH - 160, HEIGHT - 180, 4);
+    ctx.stroke();
 
     if (patrickWinePhase === 'intro') {
       // Patrick introduces himself
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('Ah, another traveller seeking passage.', 110, 140);
-      ctx.fillText('I\'m Patrick. I keep things... compliant.', 110, 165);
-      ctx.fillText('', 110, 190);
-      ctx.fillText('Now, normally I can be persuaded with', 110, 210);
-      ctx.fillText('a bottle of social lubricant...', 110, 235);
+      ctx.fillText('Ah, another traveller seeking passage.', 110, 155);
+      ctx.fillText('I\'m Patrick. I keep things... compliant.', 110, 180);
+      ctx.fillText('', 110, 205);
+      ctx.fillText('Now, normally I can be persuaded with', 110, 220);
+      ctx.fillText('a bottle of social lubricant...', 110, 245);
       // Continue prompt
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
@@ -2436,26 +2638,26 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       // Wine bribe options
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('So, what do you say? Have you got', 110, 140);
-      ctx.fillText('a nice bottle for old Patrick?', 110, 165);
+      ctx.fillText('So, what do you say? Have you got', 110, 155);
+      ctx.fillText('a nice bottle for old Patrick?', 110, 180);
       // Option 0: Give wine (greyed out, unselectable)
       const opt0Selected = patrickWineSelected === 0;
       ctx.fillStyle = '#444444';
       ctx.font = '14px monospace';
-      ctx.fillText(opt0Selected ? '> Offer a fine vintage' : '  Offer a fine vintage', 120, 210);
+      ctx.fillText(opt0Selected ? '> Offer a fine vintage' : '  Offer a fine vintage', 120, 220);
       ctx.fillStyle = '#444444';
       ctx.font = '11px monospace';
-      ctx.fillText('  (You don\'t have one)', 135, 228);
+      ctx.fillText('  (You don\'t have one)', 135, 238);
       // Option 1: Offer engine oil
       const opt1Selected = patrickWineSelected === 1;
       ctx.fillStyle = opt1Selected ? '#ffaa00' : '#888888';
       ctx.font = opt1Selected ? 'bold 14px monospace' : '14px monospace';
-      ctx.fillText(opt1Selected ? '> Offer a bottle of engine oil' : '  Offer a bottle of engine oil', 120, 260);
+      ctx.fillText(opt1Selected ? '> Offer a bottle of engine oil' : '  Offer a bottle of engine oil', 120, 268);
       // Option 2: No wine
       const opt2Selected = patrickWineSelected === 2;
       ctx.fillStyle = opt2Selected ? '#00ff00' : '#888888';
       ctx.font = opt2Selected ? 'bold 14px monospace' : '14px monospace';
-      ctx.fillText(opt2Selected ? '> "Sorry, I don\'t have anything."' : '  "Sorry, I don\'t have anything."', 120, 300);
+      ctx.fillText(opt2Selected ? '> "Sorry, I don\'t have anything."' : '  "Sorry, I don\'t have anything."', 120, 308);
       // Controls
       ctx.fillStyle = '#555555';
       ctx.font = '11px monospace';
@@ -2464,20 +2666,20 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       // Patrick's horrified/disgusted response to engine oil
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('*recoils in horror*', 110, 130);
+      ctx.fillText('*recoils in horror*', 110, 150);
       ctx.fillStyle = '#ff8888';
       ctx.font = '14px monospace';
-      ctx.fillText('ENGINE OIL?!', 110, 160);
+      ctx.fillText('ENGINE OIL?!', 110, 175);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('What is this, a 2019 Bordeaux Sup\u00E9rieur?!', 110, 190);
-      ctx.fillText('I wouldn\'t pour this on my SHOES.', 110, 215);
+      ctx.fillText('What is this, a 2019 Bordeaux Sup\u00E9rieur?!', 110, 200);
+      ctx.fillText('I wouldn\'t pour this on my SHOES.', 110, 225);
       ctx.fillStyle = '#cccccc';
       ctx.font = '13px monospace';
-      ctx.fillText('*composes himself, straightens tie*', 110, 250);
+      ctx.fillText('*composes himself, straightens tie*', 110, 260);
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('Right. This won\'t do at all.', 110, 280);
-      ctx.fillText('You\'ll have to answer my question instead.', 110, 305);
+      ctx.fillText('Right. This won\'t do at all.', 110, 290);
+      ctx.fillText('You\'ll have to answer my question instead.', 110, 315);
       // Continue prompt
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
@@ -2486,14 +2688,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       // Patrick's disappointed response
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('*sighs dramatically*', 110, 140);
-      ctx.fillText('', 110, 165);
-      ctx.fillText('No fine vintage? Not even a \'82 Lafleur?', 110, 185);
-      ctx.fillText('A Rayas perhaps? Surely... nothing?', 110, 210);
-      ctx.fillText('', 110, 235);
+      ctx.fillText('*sighs dramatically*', 110, 155);
+      ctx.fillText('', 110, 180);
+      ctx.fillText('No fine vintage? Not even a \'82 Lafleur?', 110, 195);
+      ctx.fillText('A Rayas perhaps? Surely... nothing?', 110, 220);
+      ctx.fillText('', 110, 245);
       ctx.fillStyle = '#cccccc';
-      ctx.fillText('Well, in that case you\'ll have to', 110, 255);
-      ctx.fillText('answer my compliance question instead.', 110, 280);
+      ctx.fillText('Well, in that case you\'ll have to', 110, 260);
+      ctx.fillText('answer my compliance question instead.', 110, 285);
       // Continue prompt
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
@@ -2505,7 +2707,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.font = '14px monospace';
       const words = q.question.split(' ');
       let line = '';
-      let lineY = 130;
+      let lineY = 150;
       for (const word of words) {
         const test = line + word + ' ';
         if (test.length > 70) {
@@ -2525,7 +2727,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         ctx.fillStyle = isSelected ? '#00ff00' : '#888888';
         ctx.font = isSelected ? 'bold 14px monospace' : '14px monospace';
         const prefix = isSelected ? '> ' : '  ';
-        ctx.fillText(`${prefix}${opt}`, 120, optStartY + i * 30);
+        ctx.fillText(`${prefix}${opt}`, 120, optStartY + i * 28);
       });
 
       // Feedback
@@ -2548,14 +2750,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       // Key given speech bubble
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('Correct! Well done.', 110, 140);
-      ctx.fillText('', 110, 165);
-      ctx.fillText('Here, take the Compliance Key.', 110, 185);
-      ctx.fillText('Use it at the gate to proceed.', 110, 210);
-      ctx.fillText('', 110, 235);
+      ctx.fillText('Correct! Well done.', 110, 155);
+      ctx.fillText('', 110, 175);
+      ctx.fillText('Here, take the Compliance Key.', 110, 195);
+      ctx.fillText('Use it at the gate to proceed.', 110, 220);
+      ctx.fillText('', 110, 240);
       ctx.fillStyle = '#00ff00';
       ctx.font = '14px monospace';
-      ctx.fillText('🔑  COMPLIANCE KEY OBTAINED', 110, 260);
+      ctx.fillText('🔑  COMPLIANCE KEY OBTAINED', 110, 265);
       ctx.fillStyle = '#cccccc';
       ctx.font = '13px monospace';
       ctx.fillText('Now go restore harmony to Acoustica.', 110, 300);
