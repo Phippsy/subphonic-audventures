@@ -1336,15 +1336,26 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     ctx.ellipse(cx, y + 42, 14, 8, 0, 0, Math.PI);
     ctx.fill();
 
-    // === HAIR (ginger) ===
+    // === HAIR (ginger, full coverage) ===
     ctx.fillStyle = '#c85a20';
+    // Top of head hair cap
     ctx.beginPath();
-    ctx.ellipse(cx, y + 22, 19, 14, 0, Math.PI + 0.3, -0.3);
+    ctx.ellipse(cx, y + 20, 20, 12, 0, Math.PI, 0, true);
     ctx.fill();
-    // Side hair
-    ctx.fillRect(cx - 19, y + 22, 6, 14);
-    ctx.fillRect(cx + 13, y + 22, 6, 12);
-    // Hair detail/texture
+    // Fill in the crown area
+    ctx.fillRect(cx - 19, y + 18, 38, 8);
+    // Side hair (sideburns)
+    ctx.fillRect(cx - 20, y + 22, 6, 16);
+    ctx.fillRect(cx + 14, y + 22, 6, 14);
+    // Fringe/bangs
+    ctx.fillStyle = '#d06828';
+    ctx.beginPath();
+    ctx.ellipse(cx - 6, y + 16, 8, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 5, y + 17, 7, 4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair detail/texture (wavy lines)
     ctx.strokeStyle = '#a04818';
     ctx.lineWidth = 1;
     for (let h = 0; h < 5; h++) {

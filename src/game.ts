@@ -2482,64 +2482,49 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.roundRect(cx - 6, py + 17, 12, 5, 3);
     ctx.fill();
 
-    // === GLASSES (signature look) ===
-    // Frames
-    ctx.strokeStyle = '#1a1a2a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(cx - 12, py + 30, 10, 8, 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.roundRect(cx + 2, py + 30, 10, 8, 2);
-    ctx.stroke();
-    // Bridge
-    ctx.beginPath();
-    ctx.moveTo(cx - 2, py + 33);
-    ctx.lineTo(cx + 2, py + 33);
-    ctx.stroke();
-    // Temple arms
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, py + 32);
-    ctx.lineTo(cx - 15, py + 31);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + 12, py + 32);
-    ctx.lineTo(cx + 15, py + 31);
-    ctx.stroke();
-    // Lenses (blue tint)
-    ctx.fillStyle = 'rgba(160, 210, 255, 0.5)';
-    ctx.beginPath();
-    ctx.roundRect(cx - 11, py + 31, 8, 6, 1.5);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.roundRect(cx + 3, py + 31, 8, 6, 1.5);
-    ctx.fill();
-    // Lens shine
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.beginPath();
-    ctx.ellipse(cx - 8, py + 32, 2, 1.5, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(cx + 6, py + 32, 2, 1.5, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // === EYES (behind glasses) ===
+    // === EYES ===
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(cx - 7, py + 34, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 7, py + 34, 3.5, 3, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 7, py + 34, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 7, py + 34, 3.5, 3, 0, 0, Math.PI * 2);
     ctx.fill();
     // Irises (sharp brown)
     ctx.fillStyle = '#4a3020';
     ctx.beginPath();
-    ctx.arc(cx - 7, py + 34, 1.5, 0, Math.PI * 2);
+    ctx.arc(cx - 7, py + 34, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx + 7, py + 34, 1.5, 0, Math.PI * 2);
+    ctx.arc(cx + 7, py + 34, 2, 0, Math.PI * 2);
     ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(cx - 7, py + 34, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 7, py + 34, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye shine
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.beginPath();
+    ctx.arc(cx - 8, py + 33, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6, py + 33, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyebrows
+    ctx.strokeStyle = '#3a2a1a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, py + 29);
+    ctx.quadraticCurveTo(cx - 7, py + 27, cx - 3, py + 29);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 3, py + 29);
+    ctx.quadraticCurveTo(cx + 7, py + 27, cx + 11, py + 29);
+    ctx.stroke();
 
     // === EXPRESSION (slight knowing smirk) ===
     ctx.strokeStyle = '#7a5040';
