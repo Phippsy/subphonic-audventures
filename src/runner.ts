@@ -822,22 +822,26 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
 
     // === THRUST EXHAUST (layered particle system) ===
     if (thrusting) {
-      // Wide ambient glow
+      const exhaustX = PLAYER_X + playerW / 2;
+      const exhaustY = playerY + playerH + 2;
+      // Wide ambient glow (below player)
       const ambGrad = ctx.createRadialGradient(
-        PLAYER_X - 4, playerY + playerH + 4, 0,
-        PLAYER_X - 4, playerY + playerH + 4, 28
+        exhaustX, exhaustY + 12, 0,
+        exhaustX, exhaustY + 12, 30
       );
-      ambGrad.addColorStop(0, 'rgba(0, 150, 255, 0.18)');
-      ambGrad.addColorStop(0.5, 'rgba(0, 100, 200, 0.06)');
+      ambGrad.addColorStop(0, 'rgba(0, 150, 255, 0.2)');
+      ambGrad.addColorStop(0.5, 'rgba(0, 100, 200, 0.07)');
       ambGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = ambGrad;
       ctx.beginPath();
-      ctx.arc(PLAYER_X - 4, playerY + playerH + 4, 28, 0, Math.PI * 2);
+      ctx.arc(exhaustX, exhaustY + 12, 30, 0, Math.PI * 2);
       ctx.fill();
-      // Core hot particles (bright circles)
-      for (let i = 0; i < 6; i++) {
-        const tx = PLAYER_X - 3 - Math.random() * 14;
-        const ty = playerY + playerH + (Math.random() - 0.3) * 6;
+      // Core hot particles (shooting downward/diagonal)
+      for (let i = 0; i < 7; i++) {
+        const spread = (Math.random() - 0.5) * 10;
+        const depth = Math.random() * 18;
+        const tx = exhaustX + spread - depth * 0.3;
+        const ty = exhaustY + depth;
         const size = 1.5 + Math.random() * 2.5;
         const partGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, size);
         partGrad.addColorStop(0, 'rgba(220, 240, 255, 0.8)');
@@ -848,10 +852,10 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
         ctx.arc(tx, ty, size, 0, Math.PI * 2);
         ctx.fill();
       }
-      // Trailing smoke wisps
+      // Trailing smoke wisps (below and slightly behind)
       for (let i = 0; i < 4; i++) {
-        const wx = PLAYER_X - 10 - Math.random() * 18;
-        const wy = playerY + playerH - 2 + (Math.random() - 0.5) * 10;
+        const wx = exhaustX + (Math.random() - 0.5) * 14 - 6;
+        const wy = exhaustY + 10 + Math.random() * 16;
         const wSize = 3 + Math.random() * 4;
         ctx.fillStyle = `rgba(80, 140, 200, ${0.1 + Math.random() * 0.08})`;
         ctx.beginPath();
