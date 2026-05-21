@@ -66,6 +66,8 @@ type GameState = {
   checkpointY: number;
   insight: number;
   hasKey: boolean;
+  hasWine: boolean;
+  hasDoubleJump: boolean;
 };
 
 const WIDTH = 960;
@@ -123,6 +125,8 @@ const createSaveState = (): GameState => ({
   checkpointY: GROUND_Y - 54,
   insight: 0,
   hasKey: false,
+  hasWine: false,
+  hasDoubleJump: false,
 });
 
 const loadState = (): GameState => {
@@ -137,6 +141,8 @@ const loadState = (): GameState => {
       checkpointY: parsed.checkpointY ?? GROUND_Y - 54,
       insight: parsed.insight ?? 0,
       hasKey: (parsed as Record<string, unknown>).hasKey as boolean ?? false,
+      hasWine: (parsed as Record<string, unknown>).hasWine as boolean ?? false,
+      hasDoubleJump: (parsed as Record<string, unknown>).hasDoubleJump as boolean ?? false,
     };
   } catch {
     return createSaveState();
@@ -336,6 +342,9 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     { x: 7570, y: 354, w: 18, h: 18, collected: false },
     { x: 7890, y: 354, w: 18, h: 18, collected: false },
   ];
+
+  // === WINE BOTTLE (hidden easter egg on Resonance Spire summit) ===
+  const wineBottle = { x: 5820, y: -310, w: 16, h: 24, collected: state.hasWine };
 
   // === ENEMIES ===
   const enemies: Enemy[] = [
@@ -565,8 +574,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   let firstSigCollected = false;
 
   // Patrick wine bribe state
-  let patrickWinePhase: 'intro' | 'wine-offer' | 'engine-oil' | 'no-wine' | 'question' | 'key-given' = 'intro';
+  let patrickWinePhase: 'intro' | 'wine-offer' | 'engine-oil' | 'no-wine' | 'question' | 'key-given' | 'return-nag' | 'return-wine' = 'intro';
   let patrickWineSelected = 2; // default to "Sorry, I don't have anything"
+
+  // Wine & double jump easter egg state
+  let wineNotificationTimer = 0;
+  let canDoubleJump = state.hasDoubleJump;
+  let hasUsedJumpInAir = false; // tracks whether air-jump was used this airborne
+  let prevJumpPressed = false; // for edge detection on double-jump
 
   // Multi-page intro story
   const introPages = [
@@ -601,6 +616,8 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     checkpoints.forEach((c) => { c.activated = false; c.spinTimer = 0; });
     state.insight = 0;
     state.hasKey = false;
+    state.hasWine = false;
+    state.hasDoubleJump = false;
     state.checkpointX = 72;
     state.checkpointY = GROUND_Y - 54;
     gate.open = false;
@@ -611,6 +628,8 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     currentChapter = 0;
     firstEnemyEncountered = false;
     firstSigCollected = false;
+    wineBottle.collected = false;
+    canDoubleJump = false;
   };
 
   const restartGame = () => {
@@ -954,6 +973,9 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     if (extraLifeTimer > 0) {
       extraLifeTimer -= dt;
     }
+    if (wineNotificationTimer > 0) {
+      wineNotificationTimer -= dt;
+    }
 
     // Story interlude pauses gameplay
     if (storyInterludeActive) {
@@ -1042,6 +1064,29 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         }
         return;
       }
+      if (patrickWinePhase === 'return-nag') {
+        // Patrick nags the player for coming back
+        if (keys[' '] || keys.enter) {
+          keys[' '] = false;
+          keys.enter = false;
+          patrickDialogActive = false;
+        }
+        return;
+      }
+      if (patrickWinePhase === 'return-wine') {
+        // Patrick is overjoyed to receive wine — grants double jump
+        if (keys[' '] || keys.enter) {
+          keys[' '] = false;
+          keys.enter = false;
+          patrickDialogActive = false;
+          state.hasDoubleJump = true;
+          canDoubleJump = true;
+          state.hasWine = false;
+          persistState(state);
+          infoMessage = 'DOUBLE JUMP UNLOCKED! Press jump again mid-air!';
+        }
+        return;
+      }
       // Question phase (original logic)
       if (keys['arrowup'] || keys.w) {
         patrickSelectedOption = (patrickSelectedOption + patrickQuestions[patrickQuestionIndex].options.length - 1) % patrickQuestions[patrickQuestionIndex].options.length;
@@ -1084,9 +1129,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
     // Patrick NPC interaction - triggers on proximity
     let nearPatrick = false;
+    const patrickProximity = Math.abs(player.x + player.w / 2 - (patrick.x + patrick.w / 2)) < 60 &&
+      Math.abs(player.y - patrick.y) < 80;
     if (!patrick.questionAnswered) {
-      nearPatrick = Math.abs(player.x + player.w / 2 - (patrick.x + patrick.w / 2)) < 60 &&
-        Math.abs(player.y - patrick.y) < 80;
+      nearPatrick = patrickProximity;
       if (nearPatrick) {
         patrickDialogActive = true;
         patrickWinePhase = 'intro';
@@ -1097,6 +1143,18 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         keys.enter = false;
         return;
       }
+    } else if (patrickProximity && !patrickDialogActive && (keys[' '] || keys.enter)) {
+      // Return visit after key obtained
+      nearPatrick = true;
+      keys[' '] = false;
+      keys.enter = false;
+      patrickDialogActive = true;
+      if (state.hasWine && !state.hasDoubleJump) {
+        patrickWinePhase = 'return-wine';
+      } else {
+        patrickWinePhase = 'return-nag';
+      }
+      return;
     }
 
     const left = keys['arrowleft'] || keys.a;
@@ -1131,6 +1189,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     if (jumpPressed && player.onGround && !onLadder) {
       player.vy = JUMP_VELOCITY;
       player.onGround = false;
+      hasUsedJumpInAir = false;
       sfxJump();
       // Spawn dust
       for (let i = 0; i < 4; i++) {
@@ -1142,7 +1201,22 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           life: 0.4 + Math.random() * 0.3,
         });
       }
+    } else if (jumpPressed && !prevJumpPressed && !player.onGround && canDoubleJump && !hasUsedJumpInAir && !onLadder) {
+      // Double jump (wine reward) — only on fresh press
+      player.vy = JUMP_VELOCITY * 0.8;
+      hasUsedJumpInAir = true;
+      sfxJump();
+      // Purple sparkle burst for double jump
+      for (let i = 0; i < 6; i++) {
+        sparkles.push({
+          x: player.x + player.w / 2 + (Math.random() - 0.5) * 20,
+          y: player.y + player.h / 2,
+          life: 0.5 + Math.random() * 0.3,
+          color: `hsl(${280 + Math.random() * 40}, 80%, 60%)`,
+        });
+      }
     }
+    prevJumpPressed = jumpPressed;
 
     if (!onLadder) player.vy += GRAVITY * dt;
 
@@ -1184,6 +1258,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     // Landing sound
     if (wasAirborne && player.onGround) {
       sfxLand();
+      hasUsedJumpInAir = false;
     }
 
     // Pit death
@@ -1269,6 +1344,24 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           extraLifeTimer = 3.5;
           sfxExtraLife();
         }
+      }
+    }
+
+    // Wine bottle collection (easter egg)
+    if (!wineBottle.collected && overlap(player, wineBottle)) {
+      wineBottle.collected = true;
+      state.hasWine = true;
+      wineNotificationTimer = 4;
+      sfxKeyObtained();
+      persistState(state);
+      // Gold sparkle burst
+      for (let i = 0; i < 10; i++) {
+        sparkles.push({
+          x: wineBottle.x + 8 + (Math.random() - 0.5) * 24,
+          y: wineBottle.y + 12 + (Math.random() - 0.5) * 24,
+          life: 0.6 + Math.random() * 0.5,
+          color: ['#cc0033', '#ffdd00', '#aa0022'][Math.floor(Math.random() * 3)],
+        });
       }
     }
 
@@ -2224,15 +2317,18 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.fillRect(centerX - 11, py + 2, 3, 8);
     ctx.fillRect(centerX + 8, py + 2, 3, 8);
 
-    // Glasses
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(centerX - 8, py + 9, 7, 5);
-    ctx.fillRect(centerX + 1, py + 9, 7, 5);
-    ctx.fillRect(centerX - 1, py + 10, 2, 2);
-    // Lenses
-    ctx.fillStyle = '#a0d0ff';
-    ctx.fillRect(centerX - 7, py + 10, 5, 3);
-    ctx.fillRect(centerX + 2, py + 10, 5, 3);
+    // Eyes
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(centerX - 7, py + 9, 5, 4);
+    ctx.fillRect(centerX + 2, py + 9, 5, 4);
+    // Pupils
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(centerX - 6, py + 10, 3, 3);
+    ctx.fillRect(centerX + 3, py + 10, 3, 3);
+    // Eyebrows
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(centerX - 8, py + 7, 6, 2);
+    ctx.fillRect(centerX + 2, py + 7, 6, 2);
 
     // Mouth
     ctx.fillStyle = '#8a5a5a';
@@ -2752,6 +2848,58 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
       ctx.fillText('Press SPACE to continue', 110, HEIGHT - 65);
+    } else if (patrickWinePhase === 'return-nag') {
+      // Patrick nags the player for returning after getting the key
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px monospace';
+      ctx.fillText('*raises eyebrow*', 110, 155);
+      ctx.fillText('', 110, 175);
+      ctx.fillText('You\'re back? WHY are you back?', 110, 195);
+      ctx.fillText('', 110, 215);
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText('You have a KEY. You have a MISSION.', 110, 240);
+      ctx.fillText('Acoustica doesn\'t save itself, you know.', 110, 265);
+      ctx.fillStyle = '#cccccc';
+      ctx.font = '13px monospace';
+      ctx.fillText('', 110, 290);
+      ctx.fillText('*straightens tie disapprovingly*', 110, 310);
+      ctx.fillText('Off you go. Chop chop.', 110, 335);
+      // Continue prompt
+      ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
+      ctx.font = '11px monospace';
+      ctx.fillText('Press SPACE to leave', 110, HEIGHT - 65);
+    } else if (patrickWinePhase === 'return-wine') {
+      // Patrick receives the wine — overjoyed, grants double jump
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px monospace';
+      ctx.fillText('*eyes widen*', 110, 150);
+      ctx.fillText('', 110, 170);
+      ctx.fillStyle = '#ffcc00';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('Is that... a Ch\u00E2teau Rayas \'90?!', 110, 190);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px monospace';
+      ctx.fillText('', 110, 210);
+      ctx.fillText('My word. I haven\'t seen one of these since', 110, 225);
+      ctx.fillText('the Compliance Christmas Party of 2003.', 110, 250);
+      ctx.fillText('', 110, 270);
+      ctx.fillStyle = '#cccccc';
+      ctx.font = '13px monospace';
+      ctx.fillText('*takes bottle reverently, adjusts tie*', 110, 285);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px monospace';
+      ctx.fillText('', 110, 305);
+      ctx.fillText('Right. For this, I\'ll bend the rules.', 110, 320);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('Take this: DOUBLE JUMP clearance.', 110, 350);
+      ctx.fillStyle = '#888888';
+      ctx.font = '12px monospace';
+      ctx.fillText('(Press jump again while airborne)', 110, 375);
+      // Continue prompt
+      ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
+      ctx.font = '11px monospace';
+      ctx.fillText('Press SPACE to accept', 110, HEIGHT - 65);
     }
   };
 
@@ -2805,6 +2953,13 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.fillStyle = state.hasKey ? '#00ff00' : '#333333';
     ctx.font = '12px monospace';
     ctx.fillText(state.hasKey ? 'KEY [✓]' : 'KEY [ ]', 100, 52);
+
+    // Double jump indicator
+    if (canDoubleJump) {
+      ctx.fillStyle = '#cc88ff';
+      ctx.font = '10px monospace';
+      ctx.fillText('2×JUMP', 140, 42);
+    }
 
     // Score
     ctx.fillStyle = '#00ff00';
@@ -2965,6 +3120,41 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       drawSig(sx, sig.y, sig.x);
     }
 
+    // Wine bottle (easter egg)
+    if (!wineBottle.collected) {
+      const wx = wineBottle.x - cameraX;
+      if (wx > -30 && wx < WIDTH + 30) {
+        const wy = wineBottle.y;
+        const bob = Math.sin(animTime * 2.5) * 2;
+        // Bottle body (dark green glass)
+        ctx.fillStyle = '#1a3d1a';
+        ctx.beginPath();
+        ctx.roundRect(wx + 3, wy + 8 + bob, 10, 14, 2);
+        ctx.fill();
+        // Bottle neck
+        ctx.fillStyle = '#1a3d1a';
+        ctx.fillRect(wx + 5, wy + 2 + bob, 6, 8);
+        // Cork
+        ctx.fillStyle = '#c8a060';
+        ctx.fillRect(wx + 6, wy + bob, 4, 3);
+        // Label
+        ctx.fillStyle = '#e8d8b0';
+        ctx.fillRect(wx + 4, wy + 12 + bob, 8, 6);
+        // Label text
+        ctx.fillStyle = '#6a1a1a';
+        ctx.fillRect(wx + 5, wy + 14 + bob, 6, 2);
+        // Wine colour in bottle (visible through glass)
+        ctx.fillStyle = 'rgba(100, 10, 30, 0.5)';
+        ctx.fillRect(wx + 4, wy + 16 + bob, 8, 5);
+        // Sparkle
+        const sparkAlpha = 0.4 + Math.sin(animTime * 4) * 0.3;
+        ctx.fillStyle = `rgba(255, 255, 200, ${sparkAlpha})`;
+        ctx.beginPath();
+        ctx.arc(wx + 8, wy + 6 + bob, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Enemies
     for (const enemy of enemies) {
       if (!enemy.alive) continue;
@@ -2978,6 +3168,21 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
     // Patrick NPC
     drawPatrick();
+
+    // Patrick interaction prompt (when player has key and is near)
+    if (patrick.questionAnswered && !patrickDialogActive) {
+      const patrickScreenX = patrick.x - cameraX;
+      const isNear = Math.abs(player.x + player.w / 2 - (patrick.x + patrick.w / 2)) < 60 &&
+        Math.abs(player.y - patrick.y) < 80;
+      if (isNear && patrickScreenX > -10 && patrickScreenX < WIDTH + 10) {
+        const promptAlpha = 0.6 + Math.sin(animTime * 3) * 0.3;
+        ctx.fillStyle = `rgba(0, 255, 0, ${promptAlpha})`;
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SPACE to talk', patrickScreenX + patrick.w / 2, patrick.y - 28);
+        ctx.textAlign = 'left';
+      }
+    }
 
     // Dust particles
     ctx.fillStyle = 'rgba(200, 190, 170, 0.7)';
@@ -3145,6 +3350,29 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
       ctx.font = '11px monospace';
       ctx.fillText('10 SIGs collected — the signal rewards your clarity', WIDTH / 2, 156);
+      ctx.textAlign = 'left';
+    }
+
+    // Wine bottle notification
+    if (wineNotificationTimer > 0) {
+      const alpha = Math.min(wineNotificationTimer, 1) * Math.min((4 - wineNotificationTimer) * 5, 1);
+      const glow = 0.7 + Math.sin(animTime * 6) * 0.3;
+      ctx.fillStyle = `rgba(40, 0, 10, ${0.88 * alpha})`;
+      ctx.beginPath();
+      ctx.roundRect(WIDTH / 2 - 200, 180, 400, 80, 6);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(180, 40, 60, ${glow * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(WIDTH / 2 - 200, 180, 400, 80, 6);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(200, 160, 80, ${alpha})`;
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('🍷  Ch\u00E2teau Rayas 1990 Obtained!', WIDTH / 2, 210);
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
+      ctx.font = '12px monospace';
+      ctx.fillText('A legendary Grenache. Patrick would love this...', WIDTH / 2, 240);
       ctx.textAlign = 'left';
     }
 
