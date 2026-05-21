@@ -2413,25 +2413,36 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
   const logoSprite = new Image();
   logoSprite.src = '/subphonic-logo-mark.svg';
+  const logoTintCanvas = document.createElement('canvas');
+  const logoTintCtx = logoTintCanvas.getContext('2d');
 
   const drawSubphonicLogo = (x: number, y: number, size: number, color = '#00ff00') => {
     const px = Math.round(x);
     const py = Math.round(y);
     const ps = Math.max(8, Math.round(size));
 
-    if (logoSprite.complete && logoSprite.naturalWidth > 0) {
+    if (logoSprite.complete && logoSprite.naturalWidth > 0 && logoTintCtx) {
       const prevSmoothing = ctx.imageSmoothingEnabled;
       const prevAlpha = ctx.globalAlpha;
       ctx.imageSmoothingEnabled = false;
       ctx.globalAlpha = 1;
-      ctx.drawImage(logoSprite, px, py, ps, ps);
+
+      // Draw/tint in an offscreen canvas so only the logo silhouette is colored.
+      if (logoTintCanvas.width !== ps || logoTintCanvas.height !== ps) {
+        logoTintCanvas.width = ps;
+        logoTintCanvas.height = ps;
+      }
+      logoTintCtx.clearRect(0, 0, ps, ps);
+      logoTintCtx.drawImage(logoSprite, 0, 0, ps, ps);
 
       if (color.toLowerCase() !== '#ffffff') {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = color;
-        ctx.fillRect(px, py, ps, ps);
-        ctx.globalCompositeOperation = 'source-over';
+        logoTintCtx.globalCompositeOperation = 'source-in';
+        logoTintCtx.fillStyle = color;
+        logoTintCtx.fillRect(0, 0, ps, ps);
+        logoTintCtx.globalCompositeOperation = 'source-over';
       }
+
+      ctx.drawImage(logoTintCanvas, px, py, ps, ps);
 
       ctx.imageSmoothingEnabled = prevSmoothing;
       ctx.globalAlpha = prevAlpha;
