@@ -89,7 +89,7 @@ const sonicShellDialog: { lines: string[]; speaker: string }[] = [
 ];
 
 // === MOUNT ===
-export function mountBoss(container: HTMLElement, onComplete: () => void, _onQuit: () => void): () => void {
+export function mountBoss(container: HTMLElement, onComplete: () => void, onQuit: () => void): () => void {
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -342,6 +342,18 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         keys['enter'] = false;
         onComplete();
       }
+      return;
+    }
+
+    // Quit (Q key)
+    if (keys['q']) {
+      keys['q'] = false;
+      running = false;
+      cancelAnimationFrame(animId);
+      document.removeEventListener('keydown', keyDown);
+      document.removeEventListener('keyup', keyUp);
+      stopBossBGM();
+      onQuit();
       return;
     }
 
@@ -1242,7 +1254,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         if (blink) {
           ctx.fillStyle = '#00ff00';
           ctx.font = '14px monospace';
-          ctx.fillText('SPACE to retry', WIDTH / 2, HEIGHT / 2 + 60);
+          ctx.fillText('SPACE to retry  |  Q to quit', WIDTH / 2, HEIGHT / 2 + 60);
         }
       }
       ctx.textAlign = 'left';
@@ -2302,6 +2314,11 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       ctx.fillText(phase, WIDTH - 20, HEIGHT - 20);
       ctx.textAlign = 'left';
     }
+
+    // Quit hint
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = '10px monospace';
+    ctx.fillText('Q: Quit', WIDTH - 60, 22);
   };
 
   const drawDialog = (ctx: CanvasRenderingContext2D, dialog: { lines: string[]; speaker: string }, alpha: number) => {
