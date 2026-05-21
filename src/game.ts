@@ -1037,12 +1037,21 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         if (keys[' '] || keys.enter) {
           keys[' '] = false;
           keys.enter = false;
-          if (patrickWineSelected === 1) {
+          if (patrickWineSelected === 0 && state.hasWine) {
+            // Player gives wine — skip question, get key + double jump
+            patrick.questionAnswered = true;
+            state.hasKey = true;
+            state.hasDoubleJump = true;
+            canDoubleJump = true;
+            state.hasWine = false;
+            patrickWinePhase = 'return-wine';
+            sfxKeyObtained();
+            persistState(state);
+          } else if (patrickWineSelected === 1) {
             patrickWinePhase = 'engine-oil';
           } else if (patrickWineSelected === 2) {
             patrickWinePhase = 'no-wine';
           }
-          // Option 0 (Give wine) does nothing - greyed out
         }
         return;
       }
@@ -1084,11 +1093,13 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         return;
       }
       if (patrickWinePhase === 'return-wine') {
-        // Patrick is overjoyed to receive wine — grants double jump
+        // Patrick is overjoyed to receive wine — grants double jump + key
         if (keys[' '] || keys.enter) {
           keys[' '] = false;
           keys.enter = false;
           patrickDialogActive = false;
+          patrick.questionAnswered = true;
+          state.hasKey = true;
           state.hasDoubleJump = true;
           canDoubleJump = true;
           state.hasWine = false;
@@ -1159,7 +1170,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       keys[' '] = false;
       keys.enter = false;
       patrickDialogActive = true;
-      if (state.hasWine && !state.hasDoubleJump) {
+      if (state.hasWine) {
         patrickWinePhase = 'return-wine';
       } else {
         patrickWinePhase = 'return-nag';
@@ -2769,14 +2780,23 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.font = '14px monospace';
       ctx.fillText('So, what do you say? Have you got', 110, 155);
       ctx.fillText('a nice bottle for old Patrick?', 110, 180);
-      // Option 0: Give wine (greyed out, unselectable)
+      // Option 0: Give wine (available if player has wine)
       const opt0Selected = patrickWineSelected === 0;
-      ctx.fillStyle = '#444444';
-      ctx.font = '14px monospace';
-      ctx.fillText(opt0Selected ? '> Offer a fine vintage' : '  Offer a fine vintage', 120, 220);
-      ctx.fillStyle = '#444444';
-      ctx.font = '11px monospace';
-      ctx.fillText('  (You don\'t have one)', 135, 238);
+      if (state.hasWine) {
+        ctx.fillStyle = opt0Selected ? '#ffcc00' : '#888888';
+        ctx.font = opt0Selected ? 'bold 14px monospace' : '14px monospace';
+        ctx.fillText(opt0Selected ? '> Offer the Ch\u00E2teau Rayas' : '  Offer the Ch\u00E2teau Rayas', 120, 220);
+        ctx.fillStyle = opt0Selected ? '#ffcc00' : '#666666';
+        ctx.font = '11px monospace';
+        ctx.fillText('  (A fine vintage!)', 135, 238);
+      } else {
+        ctx.fillStyle = '#444444';
+        ctx.font = '14px monospace';
+        ctx.fillText(opt0Selected ? '> Offer a fine vintage' : '  Offer a fine vintage', 120, 220);
+        ctx.fillStyle = '#444444';
+        ctx.font = '11px monospace';
+        ctx.fillText('  (You don\'t have one)', 135, 238);
+      }
       // Option 1: Offer engine oil
       const opt1Selected = patrickWineSelected === 1;
       ctx.fillStyle = opt1Selected ? '#ffaa00' : '#888888';
@@ -2917,30 +2937,26 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.font = '11px monospace';
       ctx.fillText('Press SPACE to leave', 110, HEIGHT - 65);
     } else if (patrickWinePhase === 'return-wine') {
-      // Patrick receives the wine — overjoyed, grants double jump
+      // Patrick receives the wine — overjoyed, grants key + double jump
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
       ctx.fillText('*eyes widen*', 110, 150);
-      ctx.fillText('', 110, 170);
       ctx.fillStyle = '#ffcc00';
       ctx.font = 'bold 14px monospace';
-      ctx.fillText('Is that... a Ch\u00E2teau Rayas \'90?!', 110, 190);
+      ctx.fillText('Is that... a Ch\u00E2teau Rayas \'90?!', 110, 180);
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('', 110, 210);
-      ctx.fillText('My word. I haven\'t seen one of these since', 110, 225);
-      ctx.fillText('the Compliance Christmas Party of 2003.', 110, 250);
-      ctx.fillText('', 110, 270);
+      ctx.fillText('My word. I haven\'t seen one of these since', 110, 210);
+      ctx.fillText('the Compliance Christmas Party of 2003.', 110, 235);
       ctx.fillStyle = '#cccccc';
       ctx.font = '13px monospace';
-      ctx.fillText('*takes bottle reverently, adjusts tie*', 110, 285);
+      ctx.fillText('*takes bottle reverently, adjusts tie*', 110, 265);
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px monospace';
-      ctx.fillText('', 110, 305);
-      ctx.fillText('Right. For this, I\'ll bend the rules.', 110, 320);
+      ctx.fillText('Right. For this, I\'ll bend ALL the rules.', 110, 295);
       ctx.fillStyle = '#00ff00';
       ctx.font = 'bold 14px monospace';
-      ctx.fillText('Take this: DOUBLE JUMP clearance.', 110, 350);
+      ctx.fillText('Take this: GATE KEY + DOUBLE JUMP!', 110, 325);
       ctx.fillStyle = '#888888';
       ctx.font = '12px monospace';
       ctx.fillText('(Press jump again while airborne)', 110, 375);
@@ -3227,7 +3243,8 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         ctx.fillStyle = `rgba(0, 255, 0, ${promptAlpha})`;
         ctx.font = '10px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('SPACE to talk', patrickScreenX + patrick.w / 2, patrick.y - 28);
+        const promptText = state.hasWine ? 'SPACE to give wine' : 'SPACE to talk';
+        ctx.fillText(promptText, patrickScreenX + patrick.w / 2, patrick.y - 42);
         ctx.textAlign = 'left';
       }
     }
