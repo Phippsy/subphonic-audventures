@@ -1,5 +1,5 @@
-// Level 3: Final Boss — Lord Noise's Mech
-// Sonia in jetpack (free flight) vs Lord Noise in a giant static mech
+// Level 3: Final Boss — Count Crosstalk's Mech
+// Sonia in jetpack (free flight) vs Count Crosstalk in a giant static mech
 // Shoot green sigs at his head to do damage, avoid beams and flying bots
 
 import { initAudio, startBossBGM, stopBossBGM, sfxBossHit, sfxBossBeam, sfxPlayerShoot, sfxBossDefeat, sfxStaticHit, sfxMenuSelect } from './audio';
@@ -61,16 +61,16 @@ interface Particle {
 
 // === DIALOG ===
 const introDialog: { lines: string[]; speaker: string }[] = [
-  { speaker: 'Sonia', lines: ['This is it. Lord Noise\'s fortress.', 'I can hear the static from here...', 'it\'s deafening.'] },
+  { speaker: 'Sonia', lines: ['This is it. Count Crosstalk\'s fortress.', 'I can hear the static from here...', 'it\'s deafening.'] },
   { speaker: 'Sonia', lines: ['He\'s piloting some kind of', 'enormous mech — the Dissonance Engine.', 'It\'s generating anti-sound fields.'] },
   { speaker: 'Sonia', lines: ['My SIG blaster should pierce', 'his armour — but only at the', 'cockpit. I need headshots.'] },
   { speaker: 'Sonia', lines: ['Patrick cleared my jetpack for', 'full-axis flight. No thrust needed —', 'just pure sonic levitation.'] },
-  { speaker: 'Sonia', lines: ['This ends now, Lord Noise.', 'Acoustica will sing again.'] },
+  { speaker: 'Sonia', lines: ['This ends now, Count Crosstalk.', 'Acoustica will sing again.'] },
 ];
 
 const victoryDialog: { lines: string[]; speaker: string }[] = [
-  { speaker: 'Sonia', lines: ['The Dissonance Engine is down!', 'Lord Noise\'s static field is...', 'collapsing!'] },
-  { speaker: 'Lord Noise', lines: ['Impossible! My frequencies were', 'PERFECT! You can\'t silence—', '...you can\'t...'] },
+  { speaker: 'Sonia', lines: ['The Dissonance Engine is down!', 'Count Crosstalk\'s static field is...', 'collapsing!'] },
+  { speaker: 'Count Crosstalk', lines: ['Impossible! My frequencies were', 'PERFECT! You can\'t silence—', '...you can\'t...'] },
   { speaker: 'Sonia', lines: ['Sound isn\'t about power, Noise.', 'It\'s about harmony. And you\'ve', 'been out of tune from the start.'] },
   { speaker: 'Sonia', lines: ['Wait — what\'s that?', 'Something\'s emerging from the', 'wreckage of the mech...'] },
   { speaker: 'Sonia', lines: ['The Harmonic Resonance Core!', 'The original source of all sound', 'in Acoustica. He was HOARDING it!'] },
@@ -599,7 +599,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       }
     }
 
-    // === DRAW BOSS (Lord Noise Mech) ===
+    // === DRAW BOSS (Count Crosstalk Mech) ===
     drawBoss(ctx);
 
     // === DRAW PROJECTILES ===
@@ -786,7 +786,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.fillStyle = '#2a2a4a';
     ctx.fillRect(bx + 60, 180, 60, headY - 160);
 
-    // Head (cockpit with Lord Noise inside)
+    // Head (cockpit with Count Crosstalk inside)
     ctx.fillStyle = headFlash;
     ctx.beginPath();
     ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
@@ -805,7 +805,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.ellipse(bx + 60, headY, 22, 15, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Lord Noise's face behind visor (evil eyes)
+    // Count Crosstalk's face behind visor (evil eyes)
     ctx.fillStyle = '#ff0000';
     ctx.beginPath();
     ctx.arc(bx + 52, headY - 3, 4, 0, Math.PI * 2);
@@ -857,7 +857,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.fillStyle = '#ffffff';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('LORD NOISE', hpBarX + hpBarW / 2, hpBarY - 4);
+    ctx.fillText('COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 4);
     ctx.textAlign = 'left';
 
     // Ambient static around mech
@@ -1067,7 +1067,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
     // Speaker name
     const speakerColor = dialog.speaker === 'Sonia' ? '#00ccaa' :
-                         dialog.speaker === 'Lord Noise' ? '#ff3344' : '#ffffff';
+                         dialog.speaker === 'Count Crosstalk' ? '#ff3344' : '#ffffff';
     ctx.fillStyle = speakerColor;
     ctx.font = 'bold 14px monospace';
     ctx.globalAlpha = alpha;

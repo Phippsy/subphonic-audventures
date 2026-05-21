@@ -410,7 +410,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         'Acoustica was once a realm of perfect signal.',
         'Subphonic\'s engineers maintained the clarity,',
         'routing audio with precision through the network.',
-        'But Lord Noise has corrupted the suburbs...',
+        'But Count Crosstalk has corrupted the suburbs...',
       ],
     },
     {
@@ -434,7 +434,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     {
       title: 'CHAPTER 4: NOISE CORE',
       lines: [
-        'The core pulses with Lord Noise\'s power.',
+        'The core pulses with Count Crosstalk\'s power.',
         'Only with all 20 sigs AND the key',
         'can the gate be opened to restore harmony.',
         'This is Subphonic\'s final stand.',
@@ -590,7 +590,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       title: 'THE WORLD OF ACOUSTICA',
       lines: [
         'A land shaped by sound, where every voice was heard.',
-        'Lord Noise rose from the static, spreading',
+        'Count Crosstalk rose from the static, spreading',
         'interference with his MuffleBots and DistortBots.',
         '',
         'Sonia, Subphonic\'s finest signal analyst,',
@@ -606,7 +606,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         'Find Patrick, the Compliance Officer,',
         'and earn the key to open the final gate.',
         '',
-        'Defeat Lord Noise. Restore Acoustica.',
+        'Defeat Count Crosstalk. Restore Acoustica.',
       ],
     },
   ];
@@ -1321,7 +1321,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
               lines: [
                 'You collected a SIG — a fragment of pure signal.',
                 'SIGs are echoes of Acoustica\'s original harmony,',
-                'scattered when Lord Noise corrupted the land.',
+                'scattered when Count Crosstalk corrupted the land.',
                 '',
                 'Each SIG you collect lifts the darkness a little,',
                 'restoring clarity to Acoustica.',
@@ -1435,7 +1435,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       state.checkpointX = 72;
       state.checkpointY = GROUND_Y - 54;
       persistState(state);
-      infoMessage = 'Harmony returns to Acoustica. Lord Noise retreats!';
+      infoMessage = 'Harmony returns to Acoustica. Count Crosstalk retreats!';
       return;
     }
 
@@ -2493,6 +2493,44 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillStyle = `rgba(0, 255, 0, ${blinkAlpha * alpha})`;
       ctx.font = '13px monospace';
       ctx.fillText('[ PRESS SPACE TO CONTINUE ]', WIDTH / 2, HEIGHT - 100);
+    }
+
+    // Foreshadow: Count Crosstalk's evil static eyes when his name appears
+    const mentionsCrosstalk = story.lines.some(l => l.includes('Count Crosstalk'));
+    if (mentionsCrosstalk && storyInterludeTimer > 1.5) {
+      const eyeAlpha = Math.min(1, (storyInterludeTimer - 1.5) * 1.5) * alpha;
+      const eyeX = WIDTH / 2;
+      const eyeY = HEIGHT - 145;
+      const flicker = 0.7 + Math.sin(animTime * 12) * 0.3;
+      // Dark shadow behind
+      ctx.fillStyle = `rgba(20, 0, 0, ${eyeAlpha * 0.6})`;
+      ctx.beginPath();
+      ctx.ellipse(eyeX, eyeY, 40, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Left eye (red, crackling)
+      ctx.fillStyle = `rgba(255, 20, 40, ${eyeAlpha * flicker})`;
+      ctx.beginPath();
+      ctx.ellipse(eyeX - 14, eyeY, 8, 4, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+      // Right eye
+      ctx.beginPath();
+      ctx.ellipse(eyeX + 14, eyeY, 8, 4, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupil slits
+      ctx.fillStyle = `rgba(255, 255, 100, ${eyeAlpha * flicker})`;
+      ctx.fillRect(eyeX - 15, eyeY - 1, 3, 2);
+      ctx.fillRect(eyeX + 13, eyeY - 1, 3, 2);
+      // Static crackle around eyes
+      ctx.strokeStyle = `rgba(255, 40, 60, ${eyeAlpha * 0.4 * flicker})`;
+      ctx.lineWidth = 0.8;
+      for (let s = 0; s < 6; s++) {
+        const sx2 = eyeX + (Math.random() - 0.5) * 60;
+        const sy2 = eyeY + (Math.random() - 0.5) * 20;
+        ctx.beginPath();
+        ctx.moveTo(sx2, sy2);
+        ctx.lineTo(sx2 + (Math.random() - 0.5) * 12, sy2 + (Math.random() - 0.5) * 8);
+        ctx.stroke();
+      }
     }
 
     ctx.textAlign = 'left';
@@ -3626,6 +3664,36 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           if (line === '') return;
           ctx.fillText(line, WIDTH / 2, 200 + i * 26);
         });
+        // Foreshadow: Count Crosstalk's evil eyes
+        if (page.lines.some(l => l.includes('Count Crosstalk'))) {
+          const eyeAlpha = 0.7 + Math.sin(animTime * 10) * 0.3;
+          const eyeX = WIDTH / 2;
+          const eyeY = 395;
+          ctx.fillStyle = `rgba(20, 0, 0, 0.5)`;
+          ctx.beginPath();
+          ctx.ellipse(eyeX, eyeY, 35, 18, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255, 20, 40, ${eyeAlpha})`;
+          ctx.beginPath();
+          ctx.ellipse(eyeX - 12, eyeY, 7, 3.5, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(eyeX + 12, eyeY, 7, 3.5, 0.15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255, 255, 100, ${eyeAlpha})`;
+          ctx.fillRect(eyeX - 13, eyeY - 1, 2.5, 2);
+          ctx.fillRect(eyeX + 11, eyeY - 1, 2.5, 2);
+          ctx.strokeStyle = `rgba(255, 40, 60, ${0.3 * eyeAlpha})`;
+          ctx.lineWidth = 0.7;
+          for (let s = 0; s < 4; s++) {
+            const sx3 = eyeX + (Math.random() - 0.5) * 50;
+            const sy3 = eyeY + (Math.random() - 0.5) * 16;
+            ctx.beginPath();
+            ctx.moveTo(sx3, sy3);
+            ctx.lineTo(sx3 + (Math.random() - 0.5) * 10, sy3 + (Math.random() - 0.5) * 6);
+            ctx.stroke();
+          }
+        }
         const storyDots = introPages.map((_, i) => i === storyPageFromMenu ? '●' : '○').join(' ');
         ctx.fillStyle = '#555';
         ctx.font = '10px monospace';
@@ -3662,7 +3730,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           // Level 1 selected — show description
           ctx.fillStyle = '#aaa';
           ctx.font = '13px monospace';
-          ctx.fillText('Navigate Acoustica • Collect signals • Defeat Lord Noise', WIDTH / 2, 220);
+          ctx.fillText('Navigate Acoustica • Collect signals • Defeat Count Crosstalk', WIDTH / 2, 220);
           ctx.fillStyle = '#666';
           ctx.font = '12px monospace';
           ctx.fillText('Press ENTER or SPACE to start', WIDTH / 2, 270);
@@ -3688,14 +3756,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           if (level3Unlocked) {
             ctx.fillStyle = '#aaa';
             ctx.font = '13px monospace';
-            ctx.fillText('Final Boss • Lord Noise\'s Mech • Restore the Harmonic Core', WIDTH / 2, 220);
+            ctx.fillText('Final Boss • Count Crosstalk\'s Mech • Restore the Harmonic Core', WIDTH / 2, 220);
             ctx.fillStyle = '#666';
             ctx.font = '12px monospace';
             ctx.fillText('Press ENTER or SPACE to launch', WIDTH / 2, 270);
           } else {
             ctx.fillStyle = '#666';
             ctx.font = '13px monospace';
-            ctx.fillText('Complete Level 2 to face Lord Noise', WIDTH / 2, 220);
+            ctx.fillText('Complete Level 2 to face Count Crosstalk', WIDTH / 2, 220);
             ctx.fillStyle = '#444';
             ctx.font = '12px monospace';
             ctx.fillText('Survive the Static Fields first!', WIDTH / 2, 270);
@@ -3816,6 +3884,37 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         ctx.fillText(line, WIDTH / 2, lineStartY + i * 26);
       });
 
+      // Count Crosstalk foreshadow eyes
+      if (page.lines.some(l => l.includes('Count Crosstalk'))) {
+        const eyeAlpha2 = 0.7 + Math.sin(animTime * 10) * 0.3;
+        const eyeX2 = WIDTH / 2;
+        const eyeY2 = 380;
+        ctx.fillStyle = `rgba(20, 0, 0, 0.5)`;
+        ctx.beginPath();
+        ctx.ellipse(eyeX2, eyeY2, 35, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 20, 40, ${eyeAlpha2})`;
+        ctx.beginPath();
+        ctx.ellipse(eyeX2 - 12, eyeY2, 7, 3.5, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(eyeX2 + 12, eyeY2, 7, 3.5, 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 100, ${eyeAlpha2})`;
+        ctx.fillRect(eyeX2 - 13, eyeY2 - 1, 2.5, 2);
+        ctx.fillRect(eyeX2 + 11, eyeY2 - 1, 2.5, 2);
+        ctx.strokeStyle = `rgba(255, 40, 60, ${0.3 * eyeAlpha2})`;
+        ctx.lineWidth = 0.7;
+        for (let s = 0; s < 4; s++) {
+          const sx4 = eyeX2 + (Math.random() - 0.5) * 50;
+          const sy4 = eyeY2 + (Math.random() - 0.5) * 16;
+          ctx.beginPath();
+          ctx.moveTo(sx4, sy4);
+          ctx.lineTo(sx4 + (Math.random() - 0.5) * 10, sy4 + (Math.random() - 0.5) * 6);
+          ctx.stroke();
+        }
+      }
+
       ctx.fillStyle = '#00ff00';
       ctx.font = '12px monospace';
       if (introPage < introPages.length - 1) {
@@ -3849,7 +3948,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillText('HARMONY RESTORED', WIDTH / 2, 80);
       ctx.fillStyle = '#c8daf0';
       ctx.font = '14px monospace';
-      ctx.fillText('Lord Noise retreats into static. Acoustica is saved!', WIDTH / 2, 110);
+      ctx.fillText('Count Crosstalk retreats into static. Acoustica is saved!', WIDTH / 2, 110);
 
       // Score & time display
       ctx.fillStyle = '#ffffff';

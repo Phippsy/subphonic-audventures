@@ -19,7 +19,7 @@ How to use:
    Sonia, our plucky hero (gender-neutral), must work their way through the (initially dark) land of Acoustica. Along the way, they collect "sigs" (signals) to improve their perspective and worldview, and bring greater clarity to their character and the world around them.
 
 3. What outcome matters most for v1?
-   Defeat the evil Lord Noise to bring harmony back to Acoustica.
+   Defeat the evil Count Crosstalk to bring harmony back to Acoustica.
 
 4. What should players feel after finishing a session?
    Amusement, joy.
@@ -63,7 +63,7 @@ How to use:
    Open the gate
 
 5. What is the fail condition?
-   Fall down hole, get killed by one of Lord Noise's minions - distortbots / mufflebots (static-like creatures)
+   Fall down hole, get killed by one of Count Crosstalk's minions - distortbots / mufflebots (static-like creatures)
 
 6. Should there be lives/health/checkpoints in v1?
    Yes
@@ -82,7 +82,7 @@ How to use:
    Sonia, the plucky hero who loves sound in all its forms - birdsong, music, a baby's laughter, the wind in the trees.
 
 2. The world premise in 2-3 sentences:
-   Acoustica, a once-peaceful country land, has been polluted by Lord Noise and his distortbots / mufflebots, static-like creatures which emit a health-draining force field and darken the landscape
+   Acoustica, a once-peaceful country land, has been polluted by Count Crosstalk and his distortbots / mufflebots, static-like creatures which emit a health-draining force field and darken the landscape
 
 3. Character mapping from real Subphonic roles (for example Patrick, James):
    Patrick: head of compliance. Dark hair, medium length, Harry-Potter-like dishevelled. A gatekeeper, one who can unlock boxes of gate keys for the player if the player correctly answers a question about good compliant practice in AI.
@@ -126,7 +126,7 @@ How to use:
    up to you
 
 6. Bosses or major challenge encounters in v1?
-   Lord noise's minion - a mega-distortbot / mufflebot
+   Count Crosstalk's minion - a mega-distortbot / mufflebot
 
 7. Estimated total playtime for full v1 completion:
    3 mins

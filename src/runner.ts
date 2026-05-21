@@ -42,7 +42,7 @@ interface Collectible {
 // === JAMES DIALOG ===
 const jamesDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'James', lines: ['Sonia! Excellent timing.', 'I\'m James — head of customer success,', 'dev lead, project manager, and general', 'Swiss army knife around here.'] },
-  { speaker: 'James', lines: ['You\'ve done brilliantly restoring', 'Acoustica. But Lord Noise has one', 'final trick — the Static Fields.'] },
+  { speaker: 'James', lines: ['You\'ve done brilliantly restoring', 'Acoustica. But Count Crosstalk has one', 'final trick — the Static Fields.'] },
   { speaker: 'James', lines: ['These fields are pure sonic chaos.', 'You can\'t walk through them —', 'you\'ll need to FLY.'] },
   { speaker: 'James', lines: ['I\'ve rigged up an Insight Booster', 'for you. Hold UP to thrust upward,', 'release to glide down. Simple!'] },
   { speaker: 'James', lines: ['One more thing — I wear a LOT of hats.', 'Too many, honestly. They\'re scattered', 'all through the Static Fields.'] },
@@ -712,6 +712,37 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
         ctx.fillText(line, WIDTH / 2, 190 + i * 30);
       });
 
+      // Foreshadow: Count Crosstalk's evil eyes when mentioned
+      if (page.lines.some(l => l.includes('Count Crosstalk'))) {
+        const eyeAlpha = 0.6 + Math.sin(animTime * 12) * 0.3;
+        const eyeX = WIDTH / 2;
+        const eyeY = 310;
+        ctx.fillStyle = `rgba(20, 0, 0, 0.5)`;
+        ctx.beginPath();
+        ctx.ellipse(eyeX, eyeY, 35, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 20, 40, ${eyeAlpha})`;
+        ctx.beginPath();
+        ctx.ellipse(eyeX - 12, eyeY, 7, 3.5, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(eyeX + 12, eyeY, 7, 3.5, 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 100, ${eyeAlpha})`;
+        ctx.fillRect(eyeX - 13, eyeY - 1, 2.5, 2);
+        ctx.fillRect(eyeX + 11, eyeY - 1, 2.5, 2);
+        ctx.strokeStyle = `rgba(255, 40, 60, ${0.3 * eyeAlpha})`;
+        ctx.lineWidth = 0.7;
+        for (let s = 0; s < 4; s++) {
+          const sx2 = eyeX + (Math.random() - 0.5) * 50;
+          const sy2 = eyeY + (Math.random() - 0.5) * 16;
+          ctx.beginPath();
+          ctx.moveTo(sx2, sy2);
+          ctx.lineTo(sx2 + (Math.random() - 0.5) * 10, sy2 + (Math.random() - 0.5) * 6);
+          ctx.stroke();
+        }
+      }
+
       // Page indicator
       ctx.fillStyle = '#555';
       ctx.font = '10px monospace';
@@ -1247,6 +1278,10 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       ctx.textAlign = 'center';
       if (ePage.speaker === 'James') {
         drawJames(ctx, WIDTH / 2 - 40, 30);
+        // After "puts on all hats" (page 3+), stack ridiculous hats on James
+        if (wonEndDialogPage >= 3) {
+          drawMegaHatStack(ctx, WIDTH / 2, 30);
+        }
       } else {
         drawSonia(ctx, WIDTH / 2 - 18, 40);
       }
@@ -1491,6 +1526,141 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     ctx.fillStyle = '#fff';
     ctx.fillRect(cx + 32, y + 73, 3, 1);
     ctx.fillRect(cx + 33, y + 72, 1, 3);
+  }
+
+  function drawMegaHatStack(ctx: CanvasRenderingContext2D, cx: number, baseY: number) {
+    // Ridiculous tower of hats stacked on James's head
+    // Each hat is a different style/colour, getting more absurd as they go up
+    const hats: { color: string; accent: string; style: 'fedora' | 'tophat' | 'beanie' | 'cap' | 'bowler' | 'sombrero' | 'fez' | 'wizard' | 'crown' | 'beret' }[] = [
+      { color: '#2a4a6a', accent: '#4a7aaa', style: 'fedora' },
+      { color: '#8b4513', accent: '#d4a06a', style: 'bowler' },
+      { color: '#cc2222', accent: '#ff6666', style: 'fez' },
+      { color: '#228833', accent: '#66cc88', style: 'beanie' },
+      { color: '#6622aa', accent: '#aa66dd', style: 'wizard' },
+      { color: '#ddaa00', accent: '#ffdd44', style: 'crown' },
+      { color: '#dd6600', accent: '#ffaa44', style: 'sombrero' },
+      { color: '#1a1a3a', accent: '#4444aa', style: 'tophat' },
+      { color: '#cc4488', accent: '#ff88bb', style: 'beret' },
+      { color: '#444444', accent: '#888888', style: 'cap' },
+      { color: '#00aacc', accent: '#66ddff', style: 'fedora' },
+      { color: '#aa2266', accent: '#dd66aa', style: 'bowler' },
+    ];
+
+    let hatY = baseY + 6; // start just above James's head
+    const wobble = Math.sin(animTime * 2) * 2;
+
+    for (let i = 0; i < hats.length; i++) {
+      const hat = hats[i];
+      const w = wobble * (i * 0.3); // more wobble higher up
+      const hx = cx + w;
+      const hatH = 10 + (hat.style === 'tophat' ? 8 : hat.style === 'wizard' ? 12 : 0);
+
+      ctx.fillStyle = hat.color;
+
+      switch (hat.style) {
+        case 'fedora':
+          ctx.fillRect(hx - 16, hatY, 32, 3); // brim
+          ctx.fillRect(hx - 10, hatY - hatH, 20, hatH); // crown
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 10, hatY - 3, 20, 2); // band
+          break;
+        case 'tophat':
+          ctx.fillRect(hx - 14, hatY, 28, 3); // brim
+          ctx.fillRect(hx - 8, hatY - hatH, 16, hatH); // tall crown
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 8, hatY - 4, 16, 2); // band
+          break;
+        case 'beanie':
+          ctx.beginPath();
+          ctx.arc(hx, hatY - 5, 11, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 11, hatY - 3, 22, 3); // rim fold
+          ctx.fillStyle = hat.color;
+          ctx.beginPath();
+          ctx.arc(hx, hatY - 12, 3, 0, Math.PI * 2); // pom
+          ctx.fill();
+          break;
+        case 'cap':
+          ctx.fillRect(hx - 10, hatY - 6, 20, 6); // body
+          ctx.fillRect(hx + 4, hatY, 14, 3); // peak
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 8, hatY - 4, 16, 2);
+          break;
+        case 'bowler':
+          ctx.fillRect(hx - 14, hatY, 28, 2); // brim
+          ctx.beginPath();
+          ctx.arc(hx, hatY - 6, 10, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 10, hatY - 2, 20, 2);
+          break;
+        case 'sombrero':
+          ctx.fillRect(hx - 20, hatY, 40, 2); // wide brim
+          ctx.beginPath();
+          ctx.arc(hx, hatY - 5, 8, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 18, hatY + 1, 36, 1);
+          break;
+        case 'fez':
+          ctx.fillRect(hx - 7, hatY - 10, 14, 10); // cylinder
+          ctx.fillStyle = hat.accent;
+          ctx.fillRect(hx - 1, hatY - 12, 2, 4); // tassel
+          ctx.fillRect(hx + 1, hatY - 10, 3, 2);
+          break;
+        case 'wizard':
+          ctx.beginPath();
+          ctx.moveTo(hx, hatY - hatH - 4);
+          ctx.lineTo(hx - 12, hatY);
+          ctx.lineTo(hx + 12, hatY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = hat.accent;
+          ctx.beginPath();
+          ctx.arc(hx - 4, hatY - 8, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(hx + 3, hatY - 14, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        case 'crown':
+          ctx.fillRect(hx - 10, hatY - 6, 20, 6);
+          // Points
+          for (let p = 0; p < 5; p++) {
+            ctx.fillRect(hx - 9 + p * 4.5, hatY - 10, 3, 4);
+          }
+          ctx.fillStyle = hat.accent;
+          ctx.beginPath();
+          ctx.arc(hx, hatY - 3, 2, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        case 'beret':
+          ctx.beginPath();
+          ctx.ellipse(hx, hatY - 3, 12, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = hat.accent;
+          ctx.beginPath();
+          ctx.arc(hx + 2, hatY - 6, 2, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+      }
+
+      hatY -= (hatH + 2);
+    }
+
+    // Top sparkle (the stack is so powerful it radiates energy)
+    const sparkAlpha = 0.5 + Math.sin(animTime * 4) * 0.3;
+    ctx.fillStyle = `rgba(255, 215, 0, ${sparkAlpha})`;
+    ctx.beginPath();
+    ctx.arc(cx + wobble * 3, hatY + 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + wobble * 3 - 6, hatY + 10, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + wobble * 3 + 7, hatY + 8, 2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawSonia(ctx: CanvasRenderingContext2D, x: number, y: number) {
