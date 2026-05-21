@@ -652,28 +652,29 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      ctx.globalAlpha = dialogAlpha;
-      ctx.textAlign = 'center';
-
       const page = jamesDialog[dialogPage];
 
-      // Speaker
-      ctx.fillStyle = page.speaker === 'James' ? '#ffaa00' : '#00ccff';
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText(page.speaker, WIDTH / 2, 160);
-
-      // Draw James (simple character)
+      // Draw avatar at full alpha (no flicker on page change)
+      ctx.textAlign = 'center';
       if (page.speaker === 'James') {
-        drawJames(ctx, WIDTH / 2 - 20, 60);
+        drawJames(ctx, WIDTH / 2 - 40, 30);
       } else {
-        drawSonia(ctx, WIDTH / 2 - 18, 60);
+        drawSonia(ctx, WIDTH / 2 - 18, 40);
       }
 
-      // Lines
+      // Speaker name (full alpha, below avatar)
+      ctx.fillStyle = page.speaker === 'James' ? '#ffaa00' : '#00ccff';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(page.speaker, WIDTH / 2, 145);
+
+      // Fade in text content only
+      ctx.globalAlpha = dialogAlpha;
+
+      // Lines (spaced below name with gap)
       ctx.fillStyle = '#e0e0e0';
       ctx.font = '14px monospace';
       page.lines.forEach((line, i) => {
-        ctx.fillText(line, WIDTH / 2, 200 + i * 28);
+        ctx.fillText(line, WIDTH / 2, 190 + i * 30);
       });
 
       // Page indicator
