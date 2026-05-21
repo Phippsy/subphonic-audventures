@@ -242,6 +242,27 @@ const chapterDrones: [number, number, number, number][] = [
 
 let currentBGMChapter = 0;
 
+// Melody sequences per chapter (note frequencies in Hz, 0 = rest)
+// Each note is 0.5 beats; 8-second loop at ~120bpm = 16 notes
+// Ch1: C minor pentatonic — eerie but hopeful, resolves upward
+// Ch2: D minor — slightly more urgent, ascending tension
+// Ch3: E phrygian — dark, mysterious
+// Ch4: G minor — intense, driving
+const chapterMelodies: number[][] = [
+  // Ch1: Eerie-hopeful lullaby in C minor (C4=262, Eb4=311, F4=349, G4=392, Bb4=466, C5=523)
+  [262, 0, 311, 262, 349, 0, 392, 311, 466, 392, 349, 311, 262, 0, 196, 0,
+   262, 311, 349, 0, 392, 466, 523, 466, 392, 349, 311, 0, 262, 0, 196, 0],
+  // Ch2: Brighter, more movement in D minor (D4=294, F4=349, A4=440, G4=392, Bb4=466)
+  [294, 0, 349, 294, 392, 0, 440, 349, 466, 440, 392, 349, 294, 0, 220, 0,
+   294, 349, 392, 0, 440, 466, 440, 392, 349, 294, 349, 0, 294, 0, 220, 0],
+  // Ch3: Darker, chromatic tension in E phrygian (E4=330, F4=349, G4=392, A4=440, B4=494)
+  [330, 0, 349, 330, 392, 0, 330, 349, 440, 392, 349, 330, 294, 0, 247, 0,
+   330, 349, 392, 0, 440, 494, 440, 392, 349, 330, 294, 0, 247, 0, 330, 0],
+  // Ch4: Intense, driving in G minor (G4=392, Bb4=466, C5=523, D5=587, F4=349)
+  [392, 0, 466, 392, 523, 0, 587, 523, 466, 392, 466, 523, 392, 0, 294, 0,
+   392, 466, 523, 0, 587, 523, 466, 392, 349, 392, 466, 0, 392, 0, 294, 0],
+];
+
 const buildBGMBuffer = (chapter: number): AudioBuffer => {
   const ac = ensureContext();
   const duration = 8;
@@ -249,6 +270,9 @@ const buildBGMBuffer = (chapter: number): AudioBuffer => {
   const length = sampleRate * duration;
   const buffer = ac.createBuffer(2, length, sampleRate);
   const [f1, f2, f3, f4] = chapterDrones[chapter] ?? chapterDrones[0];
+  const melody = chapterMelodies[chapter] ?? chapterMelodies[0];
+  const noteCount = melody.length;
+  const noteDuration = duration / noteCount; // time per note slot
 
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
@@ -266,6 +290,41 @@ const buildBGMBuffer = (chapter: number): AudioBuffer => {
       sample *= pulse;
       // Noise layer (increases subtly per chapter)
       sample += (Math.random() * 2 - 1) * (0.012 + chapter * 0.004);
+
+      // === MELODY LAYER ===
+      const noteIndex = Math.floor(t / noteDuration) % noteCount;
+      const noteFreq = melody[noteIndex];
+      if (noteFreq > 0) {
+        const noteT = (t % noteDuration); // time within this note
+        // ADSR-like envelope: attack 0.02s, sustain, release last 30% of note
+        const attackEnd = 0.02;
+        const releaseStart = noteDuration * 0.7;
+        let env: number;
+        if (noteT < attackEnd) {
+          env = noteT / attackEnd;
+        } else if (noteT > releaseStart) {
+          env = 1 - (noteT - releaseStart) / (noteDuration - releaseStart);
+        } else {
+          env = 1;
+        }
+        env = Math.max(0, Math.min(1, env));
+        // Soft sine + slight triangle for warmth
+        const melodyPhase = 2 * Math.PI * noteFreq * t;
+        let melNote = Math.sin(melodyPhase) * 0.6;
+        // Add soft octave-up harmonic for shimmer
+        melNote += Math.sin(melodyPhase * 2) * 0.15;
+        // Gentle vibrato (more in later chapters)
+        const vibrato = Math.sin(2 * Math.PI * 5 * t) * (0.002 + chapter * 0.001);
+        melNote += Math.sin(melodyPhase * (1 + vibrato)) * 0.1;
+        // Stereo variation — slight detune between channels
+        if (ch === 1) {
+          melNote += Math.sin(melodyPhase * 1.002) * 0.08;
+        }
+        // Mix melody in (quieter than drone, sits on top)
+        const melodyVol = 0.07 - chapter * 0.005; // slightly quieter in later chapters
+        sample += melNote * env * melodyVol;
+      }
+
       // Slow amplitude envelope for breathing feel
       const breath = 0.7 + 0.3 * Math.sin(2 * Math.PI * t / duration);
       sample *= breath;
