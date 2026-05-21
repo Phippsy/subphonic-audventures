@@ -55,7 +55,7 @@ const jamesDialog: { lines: string[]; speaker: string }[] = [
 const endDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'James', lines: ['Sonia! You absolute LEGEND.', 'The Static Fields are cleansed!', 'And... are those... MY HATS?!'] },
   { speaker: 'Sonia', lines: ['Every last one. You\'re welcome.'] },
-  { speaker: 'James', lines: ['Magnificent. With all my hats returned,', 'I can finally achieve my ultimate form.', 'Behold... MEGA EVOLUTION!'] },
+  { speaker: 'James', lines: ['Magnificent. With all my hats returned,', 'I can finally achieve my ultimate form.', 'Behold... MEGA-MULTI-HAT EVOLUTION!'] },
   { speaker: 'James', lines: ['*puts on all hats simultaneously*', '', '...nothing happened. But I FEEL powerful.'] },
   { speaker: 'Sonia', lines: ['James, that\'s just a headache.'] },
   { speaker: 'James', lines: ['Wait — I just had an INCREDIBLE idea.', 'What if we built a Subphonic app that', 'replaces the entire stock market?'] },
