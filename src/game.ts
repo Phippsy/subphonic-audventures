@@ -1,4 +1,4 @@
-import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
+import { initAudio, startBGM, stopBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
 import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, getL2Leaderboard, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
 import { markLevel1Complete, isLevel2Unlocked, isLevel3Unlocked } from './progress';
 
@@ -4268,6 +4268,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   return () => {
     destroyed = true;
     cancelAnimationFrame(frameId);
+    stopBGM();
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
   };

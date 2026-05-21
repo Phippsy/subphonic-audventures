@@ -44,7 +44,7 @@ const jamesDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'James', lines: ['Sonia! Excellent timing.', 'I\'m James — head of customer success,', 'dev lead, project manager, and general', 'Swiss army knife around here.'] },
   { speaker: 'James', lines: ['You\'ve done brilliantly restoring', 'Acoustica. But Count Crosstalk has one', 'final trick — the Static Fields.'] },
   { speaker: 'James', lines: ['These fields are pure sonic chaos.', 'You can\'t walk through them —', 'you\'ll need to FLY.'] },
-  { speaker: 'James', lines: ['I\'ve rigged up an Insight Booster', 'for you. Hold UP to thrust upward,', 'release to glide down. Simple!'] },
+  { speaker: 'James', lines: ['I\'ve rigged up an Insight Booster', 'for you. Hold UP / SPACE to thrust', 'upward, release to glide down. Simple!'] },
   { speaker: 'James', lines: ['One more thing — I wear a LOT of hats.', 'Too many, honestly. They\'re scattered', 'all through the Static Fields.'] },
   { speaker: 'James', lines: ['Grab my hats and you\'ll be temporarily', 'INVINCIBLE. Blast right through the', 'static and score bonus points!'] },
   { speaker: 'James', lines: ['Collect as many SIGs and hats as you', 'can. Reach the Clarity Beacon at the', 'end and the Fields are cleansed!'] },
