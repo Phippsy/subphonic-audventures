@@ -2345,6 +2345,209 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, onQuit
     ctx.fillText('Q: Quit', WIDTH - 60, 22);
   };
 
+  // === CHARACTER PORTRAITS (matching L1/L2 style) ===
+  const drawJamesPortrait = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const cx = x + 40;
+    // Body/jacket
+    ctx.fillStyle = '#1a2d4a';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + 72, 32, 18, 0, Math.PI, 0, true);
+    ctx.fill();
+    ctx.fillRect(cx - 30, y + 55, 60, 35);
+    // Lapels
+    ctx.fillStyle = '#253d5a';
+    ctx.beginPath(); ctx.moveTo(cx - 8, y + 52); ctx.lineTo(cx - 18, y + 75); ctx.lineTo(cx - 8, y + 75); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + 8, y + 52); ctx.lineTo(cx + 18, y + 75); ctx.lineTo(cx + 8, y + 75); ctx.closePath(); ctx.fill();
+    // Shirt & tie
+    ctx.fillStyle = '#dde8f0';
+    ctx.fillRect(cx - 7, y + 52, 14, 24);
+    ctx.fillStyle = '#2a6090';
+    ctx.beginPath(); ctx.moveTo(cx - 3, y + 52); ctx.lineTo(cx + 3, y + 52); ctx.lineTo(cx + 2, y + 68); ctx.lineTo(cx, y + 72); ctx.lineTo(cx - 2, y + 68); ctx.closePath(); ctx.fill();
+    // Neck & head
+    ctx.fillStyle = '#e8c8a0';
+    ctx.fillRect(cx - 6, y + 46, 12, 10);
+    ctx.beginPath(); ctx.ellipse(cx, y + 32, 18, 20, 0, 0, Math.PI * 2); ctx.fill();
+    // Hair (ginger)
+    ctx.fillStyle = '#c85a20';
+    ctx.beginPath(); ctx.ellipse(cx, y + 20, 20, 12, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillRect(cx - 19, y + 18, 38, 8);
+    ctx.fillRect(cx - 20, y + 22, 6, 16);
+    ctx.fillRect(cx + 14, y + 22, 6, 14);
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(cx - 7, y + 32, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 7, y + 32, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a6020';
+    ctx.beginPath(); ctx.arc(cx - 7, y + 33, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 7, y + 33, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx - 7, y + 33, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 7, y + 33, 1.5, 0, Math.PI * 2); ctx.fill();
+    // Eyebrows
+    ctx.strokeStyle = '#c85a20'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 12, y + 27); ctx.quadraticCurveTo(cx - 7, y + 25, cx - 2, y + 27); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 2, y + 27); ctx.quadraticCurveTo(cx + 7, y + 25, cx + 12, y + 27); ctx.stroke();
+    // Smile
+    ctx.strokeStyle = '#8a4a30'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, y + 41, 6, 0.2, Math.PI - 0.2); ctx.stroke();
+    // Hats
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath(); ctx.ellipse(cx, y + 13, 24, 4, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillStyle = '#ee7700'; ctx.fillRect(cx - 14, y + 3, 28, 11);
+    ctx.fillStyle = '#cc5500'; ctx.fillRect(cx - 14, y + 9, 28, 3);
+    ctx.fillStyle = '#33aa55';
+    ctx.beginPath(); ctx.ellipse(cx, y + 2, 18, 3, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillStyle = '#2a8844'; ctx.fillRect(cx - 10, y - 7, 20, 10);
+    ctx.fillStyle = '#7744aa'; ctx.fillRect(cx - 6, y - 14, 12, 7);
+  };
+
+  const drawPatrickPortrait = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const cx = x + 40;
+    // Suit
+    ctx.fillStyle = '#1e1e2e';
+    ctx.beginPath(); ctx.ellipse(cx, y + 72, 30, 16, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillStyle = '#2a2a3a'; ctx.fillRect(cx - 22, y + 56, 44, 20);
+    // Lapels
+    ctx.fillStyle = '#353545';
+    ctx.beginPath(); ctx.moveTo(cx - 6, y + 56); ctx.lineTo(cx - 14, y + 72); ctx.lineTo(cx - 6, y + 72); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + 6, y + 56); ctx.lineTo(cx + 14, y + 72); ctx.lineTo(cx + 6, y + 72); ctx.closePath(); ctx.fill();
+    // Shirt & tie
+    ctx.fillStyle = '#e8eef4'; ctx.fillRect(cx - 5, y + 56, 10, 16);
+    ctx.fillStyle = '#00cc44';
+    ctx.beginPath(); ctx.moveTo(cx, y + 56); ctx.lineTo(cx - 3, y + 59); ctx.lineTo(cx - 2, y + 72); ctx.lineTo(cx + 2, y + 72); ctx.lineTo(cx + 3, y + 59); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#009933'; ctx.beginPath(); ctx.ellipse(cx, y + 57, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+    // Pocket square
+    ctx.fillStyle = '#cc0000';
+    ctx.beginPath(); ctx.moveTo(cx + 14, y + 58); ctx.lineTo(cx + 11, y + 63); ctx.lineTo(cx + 17, y + 63); ctx.closePath(); ctx.fill();
+    // Neck & head
+    ctx.fillStyle = '#e0c090'; ctx.fillRect(cx - 5, y + 48, 10, 10);
+    ctx.fillStyle = '#e8c8a0';
+    ctx.beginPath(); ctx.roundRect(cx - 14, y + 18, 28, 32, 8); ctx.fill();
+    // Hair (dark brown, professional)
+    ctx.fillStyle = '#3a2a1a';
+    ctx.beginPath(); ctx.roundRect(cx - 14, y + 16, 28, 12, [8, 8, 0, 0]); ctx.fill();
+    ctx.fillRect(cx - 15, y + 22, 4, 10);
+    ctx.fillRect(cx + 11, y + 22, 4, 10);
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(cx - 7, y + 34, 3.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 7, y + 34, 3.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath(); ctx.arc(cx - 7, y + 34, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 7, y + 34, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx - 7, y + 34, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 7, y + 34, 1, 0, Math.PI * 2); ctx.fill();
+    // Eyebrows
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 11, y + 29); ctx.quadraticCurveTo(cx - 7, y + 27, cx - 3, y + 29); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 3, y + 29); ctx.quadraticCurveTo(cx + 7, y + 27, cx + 11, y + 29); ctx.stroke();
+    // Smirk
+    ctx.strokeStyle = '#7a5040'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(cx, y + 42, 4, 0.1, Math.PI - 0.1); ctx.stroke();
+    // Wine glass
+    ctx.fillStyle = '#2a2a3a'; ctx.fillRect(cx + 22, y + 56, 5, 12);
+    ctx.fillStyle = '#e0c090'; ctx.fillRect(cx + 22, y + 66, 5, 4);
+    ctx.strokeStyle = 'rgba(200, 220, 255, 0.7)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx + 24, y + 62); ctx.lineTo(cx + 22, y + 55); ctx.lineTo(cx + 28, y + 55); ctx.lineTo(cx + 26, y + 62); ctx.stroke();
+    ctx.fillStyle = 'rgba(120, 20, 40, 0.7)';
+    ctx.beginPath(); ctx.moveTo(cx + 23, y + 58); ctx.lineTo(cx + 22.5, y + 55); ctx.lineTo(cx + 27.5, y + 55); ctx.lineTo(cx + 27, y + 58); ctx.closePath(); ctx.fill();
+  };
+
+  const drawSoniaPortrait = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const cx = x + 40;
+    // Jetpack suit body
+    ctx.fillStyle = '#1a1a3a';
+    ctx.beginPath(); ctx.ellipse(cx, y + 72, 28, 16, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillRect(cx - 24, y + 56, 48, 24);
+    // Suit accents
+    ctx.fillStyle = '#00ccaa'; ctx.fillRect(cx - 24, y + 62, 48, 3);
+    ctx.fillRect(cx - 3, y + 56, 6, 24);
+    // Neck & head
+    ctx.fillStyle = '#e8c8a0'; ctx.fillRect(cx - 5, y + 48, 10, 10);
+    ctx.fillStyle = '#e8c8a0';
+    ctx.beginPath(); ctx.ellipse(cx, y + 32, 16, 18, 0, 0, Math.PI * 2); ctx.fill();
+    // Hair (dark purple/black with teal streak)
+    ctx.fillStyle = '#2a1a3a';
+    ctx.beginPath(); ctx.ellipse(cx, y + 20, 18, 12, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillRect(cx - 17, y + 18, 34, 8);
+    ctx.fillRect(cx - 18, y + 22, 5, 18);
+    ctx.fillRect(cx + 13, y + 22, 5, 18);
+    // Teal streak
+    ctx.fillStyle = '#00ccaa'; ctx.fillRect(cx - 12, y + 16, 6, 10);
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(cx - 6, y + 32, 4, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 6, y + 32, 4, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#00aa88';
+    ctx.beginPath(); ctx.arc(cx - 6, y + 33, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 6, y + 33, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx - 6, y + 33, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 6, y + 33, 1.2, 0, Math.PI * 2); ctx.fill();
+    // Determined expression
+    ctx.strokeStyle = '#8a5040'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx - 4, y + 41); ctx.lineTo(cx + 4, y + 41); ctx.stroke();
+    // Headset/comms
+    ctx.strokeStyle = '#00ffdd'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, y + 28, 18, -0.3, Math.PI + 0.3, true); ctx.stroke();
+    ctx.fillStyle = '#00ffdd';
+    ctx.beginPath(); ctx.arc(cx - 16, y + 34, 3, 0, Math.PI * 2); ctx.fill();
+    // Antenna
+    ctx.strokeStyle = '#00ffdd'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx + 12, y + 18); ctx.lineTo(cx + 16, y + 8); ctx.stroke();
+    ctx.fillStyle = '#00ffdd';
+    ctx.beginPath(); ctx.arc(cx + 16, y + 7, 2.5, 0, Math.PI * 2); ctx.fill();
+  };
+
+  const drawCrosstalkPortrait = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const cx = x + 40;
+    // Mech collar/shoulders
+    ctx.fillStyle = '#2a0a1a';
+    ctx.beginPath(); ctx.ellipse(cx, y + 72, 34, 18, 0, Math.PI, 0, true); ctx.fill();
+    ctx.fillRect(cx - 30, y + 55, 60, 28);
+    // Static crackle lines on shoulders
+    ctx.strokeStyle = '#ff2244'; ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 25 + i * 14, y + 60);
+      ctx.lineTo(cx - 22 + i * 14, y + 65);
+      ctx.lineTo(cx - 25 + i * 14, y + 70);
+      ctx.stroke();
+    }
+    // Head (angular, menacing)
+    ctx.fillStyle = '#3a1020';
+    ctx.beginPath(); ctx.roundRect(cx - 16, y + 18, 32, 34, 4); ctx.fill();
+    // Face plate
+    ctx.fillStyle = '#1a0510';
+    ctx.beginPath(); ctx.roundRect(cx - 12, y + 24, 24, 22, 3); ctx.fill();
+    // Eyes (glowing red)
+    ctx.fillStyle = '#ff2244';
+    ctx.shadowColor = '#ff0033'; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.ellipse(cx - 6, y + 34, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 6, y + 34, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // Eye slits
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillRect(cx - 8, y + 33, 2, 2);
+    ctx.fillRect(cx + 6, y + 33, 2, 2);
+    // Mouth (jagged)
+    ctx.strokeStyle = '#ff4466'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, y + 42);
+    for (let t = 0; t < 8; t++) { ctx.lineTo(cx - 8 + t * 2, y + (t % 2 === 0 ? 42 : 45)); }
+    ctx.stroke();
+    // Crown spikes
+    ctx.fillStyle = '#ff2244';
+    for (let s = 0; s < 5; s++) {
+      const sx = cx - 12 + s * 6;
+      ctx.beginPath(); ctx.moveTo(sx, y + 18); ctx.lineTo(sx + 3, y + 8); ctx.lineTo(sx + 6, y + 18); ctx.fill();
+    }
+    // Static aura
+    ctx.strokeStyle = 'rgba(255, 50, 80, 0.4)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(cx, y + 40, 28, 35, 0, 0, Math.PI * 2); ctx.stroke();
+  };
+
   const drawDialog = (ctx: CanvasRenderingContext2D, dialog: { lines: string[]; speaker: string }, alpha: number) => {
     const dx = 60, dy = HEIGHT - 180, dw = WIDTH - 120, dh = 150;
     ctx.globalAlpha = alpha;
@@ -2396,76 +2599,19 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, onQuit
     ctx.fillStyle = speakerColor;
     ctx.fillRect(dx + 10, dy + 8, 3, 18);
 
-    // Character avatar
-    const avX = dx + dw - 55, avY = dy + 35;
+    // Character avatar (detailed portraits matching L1/L2)
+    const avX = dx + dw - 70, avY = dy + 8;
     ctx.save();
+    ctx.translate(avX, avY);
+    ctx.scale(0.65, 0.65);
     if (dialog.speaker === 'Sonia') {
-      // Teal circle, antenna
-      ctx.fillStyle = '#00ccaa';
-      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#003322';
-      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#00ffdd';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(avX, avY - 18); ctx.lineTo(avX, avY - 28); ctx.stroke();
-      ctx.fillStyle = '#00ffdd';
-      ctx.beginPath(); ctx.arc(avX, avY - 28, 3, 0, Math.PI * 2); ctx.fill();
+      drawSoniaPortrait(ctx, 0, 0);
     } else if (dialog.speaker === 'James') {
-      // Gold circle with hat
-      ctx.fillStyle = '#ffcc00';
-      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#664400';
-      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      // Hat
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(avX - 12, avY - 22, 24, 6);
-      ctx.fillRect(avX - 8, avY - 32, 16, 12);
-      // Smile
-      ctx.strokeStyle = '#664400';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(avX, avY + 2, 7, 0.1, Math.PI - 0.1); ctx.stroke();
+      drawJamesPortrait(ctx, 0, 0);
     } else if (dialog.speaker === 'Patrick') {
-      // Red/orange circle with tie
-      ctx.fillStyle = '#ff6644';
-      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#441100';
-      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
-      // Stern expression
-      ctx.strokeStyle = '#441100';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(avX - 5, avY + 6); ctx.lineTo(avX + 5, avY + 6); ctx.stroke();
-      // Tie
-      ctx.fillStyle = '#cc0000';
-      ctx.beginPath();
-      ctx.moveTo(avX, avY + 18); ctx.lineTo(avX - 4, avY + 24);
-      ctx.lineTo(avX, avY + 32); ctx.lineTo(avX + 4, avY + 24);
-      ctx.closePath(); ctx.fill();
-      // Glasses
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(avX - 9, avY - 6, 7, 5);
-      ctx.strokeRect(avX + 2, avY - 6, 7, 5);
-      ctx.beginPath(); ctx.moveTo(avX - 2, avY - 4); ctx.lineTo(avX + 2, avY - 4); ctx.stroke();
+      drawPatrickPortrait(ctx, 0, 0);
     } else if (dialog.speaker === 'Count Crosstalk') {
-      // Dark red spiky
-      ctx.fillStyle = '#661122';
-      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ff2244';
-      ctx.beginPath(); ctx.arc(avX - 5, avY - 2, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(avX + 5, avY - 2, 3, 0, Math.PI * 2); ctx.fill();
-      // Spikes
-      ctx.fillStyle = '#ff2244';
-      for (let s = 0; s < 5; s++) {
-        const angle = -Math.PI / 2 + (s - 2) * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(avX + Math.cos(angle) * 16, avY + Math.sin(angle) * 16);
-        ctx.lineTo(avX + Math.cos(angle) * 26, avY + Math.sin(angle) * 26);
-        ctx.lineTo(avX + Math.cos(angle + 0.2) * 16, avY + Math.sin(angle + 0.2) * 16);
-        ctx.fill();
-      }
+      drawCrosstalkPortrait(ctx, 0, 0);
     }
     ctx.restore();
 

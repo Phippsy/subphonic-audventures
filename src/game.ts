@@ -228,7 +228,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     { x: 620, y: 355, w: 120, h: 24 },
     { x: 810, y: 330, w: 130, h: 24 },
     { x: 1000, y: 290, w: 120, h: 24 },
-    { x: 1250, y: 360, w: 130, h: 24 },
+    { x: 1250, y: 310, w: 130, h: 24 },
     { x: 1430, y: 310, w: 150, h: 24 },
     { x: 1650, y: 350, w: 130, h: 24 },
 
@@ -2996,7 +2996,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.strokeRect(10, 10, 180, 115);
 
     // Hearts for lives
-    for (let h = 0; h < 3; h++) {
+    for (let h = 0; h < Math.max(3, state.lives); h++) {
       const hx = 22 + h * 24;
       const hy = 22;
       if (h < state.lives) {
