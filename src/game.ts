@@ -83,6 +83,7 @@ const FALL_DEATH_Y = HEIGHT + 80;
 
 const REQUIRED_SIGS = 23;
 const STORAGE_KEY = 'subphonic-audventures-save-v4';
+const STORY_SEEN_KEY = 'subphonic-audventures-story-seen';
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
@@ -539,6 +540,13 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   let startMenuLeaderboardTab: 'score' | 'time' | 'l2score' = 'score';
   let showingStory = false; // showing story pages from menu
   let storyPageFromMenu = 0;
+
+  // Force story on first ever visit
+  const isFirstVisit = !localStorage.getItem(STORY_SEEN_KEY);
+  if (isFirstVisit) {
+    showingStory = true;
+    storyPageFromMenu = 0;
+  }
   let fallDeathActive = false; // NEW: falling animation instead of explode
   let hintsEnabled = true; // Toggle tutorial popups (H key)
   let quitConfirmActive = false; // Q pressed, awaiting confirmation
@@ -835,12 +843,15 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           } else {
             showingStory = false;
             storyPageFromMenu = 0;
+            localStorage.setItem(STORY_SEEN_KEY, '1');
           }
         }
-        if (keys.escape) {
+        // Only allow Escape skip if user has seen story before
+        if (keys.escape && !isFirstVisit) {
           keys.escape = false;
           showingStory = false;
           storyPageFromMenu = 0;
+          localStorage.setItem(STORY_SEEN_KEY, '1');
         }
       } else if (startMenuSelection === 3 && keys.escape) {
         // Back from leaderboard view in menu
@@ -3728,9 +3739,9 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         ctx.fillStyle = '#00ff00';
         ctx.font = '12px monospace';
         if (storyPageFromMenu < introPages.length - 1) {
-          ctx.fillText('SPACE/ENTER to continue • ESC to go back', WIDTH / 2, HEIGHT - 45);
+          ctx.fillText(isFirstVisit ? 'SPACE/ENTER to continue' : 'SPACE/ENTER to continue • ESC to go back', WIDTH / 2, HEIGHT - 45);
         } else {
-          ctx.fillText('SPACE/ENTER or ESC to return to menu', WIDTH / 2, HEIGHT - 45);
+          ctx.fillText('SPACE/ENTER to begin', WIDTH / 2, HEIGHT - 45);
         }
       } else {
         // Always show menu items as selectable tabs
