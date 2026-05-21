@@ -303,6 +303,144 @@ export const stopBGM = () => {
   bgmPlaying = false;
 };
 
+// === LEVEL 2 RUNNER BGM ===
+// Melodic, urgent, Jeopardy-style with arpeggios and chord progressions
+// Same synth DNA as Level 1 (square/triangle waves) but with harmonic movement
+
+let runnerBGMSource: AudioBufferSourceNode | null = null;
+let runnerBGMPlaying = false;
+
+const buildRunnerBGMBuffer = (): AudioBuffer => {
+  const ac = ensureContext();
+  const bpm = 132;
+  const beatDur = 60 / bpm;
+  const bars = 8;
+  const duration = bars * 4 * beatDur; // 8 bars of 4 beats
+  const sampleRate = ac.sampleRate;
+  const length = Math.ceil(sampleRate * duration);
+  const buffer = ac.createBuffer(2, length, sampleRate);
+
+  // Chord progression: Dm - Gm - Bb - A (i - iv - VI - V) — 2 bars each
+  // Frequencies for each chord (root, third, fifth, octave)
+  const chords: [number, number, number, number][] = [
+    [147, 175, 220, 294],   // Dm: D3, F3, A3, D4
+    [196, 233, 294, 392],   // Gm: G3, Bb3, D4, G4
+    [117, 147, 175, 233],   // Bb: Bb2, D3, F3, Bb3
+    [220, 277, 330, 440],   // A:  A3, C#4, E4, A4
+  ];
+
+  // Bass notes (root of each chord, one octave lower)
+  const bassNotes = [73.5, 98, 58.5, 110]; // D2, G2, Bb1, A2
+
+  // Arpeggio patterns (indices into chord array) — varied per chord
+  const arpPatterns = [
+    [0, 1, 2, 3, 2, 1, 0, 2],  // ascending-descending
+    [0, 2, 1, 3, 0, 3, 2, 1],  // jumping
+    [0, 1, 2, 3, 3, 2, 1, 0],  // up then down
+    [2, 0, 3, 1, 2, 3, 0, 1],  // mixed tension
+  ];
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const beatPos = t / beatDur;
+      const barIndex = Math.floor(beatPos / 4);
+      const chordIndex = Math.floor(barIndex / 2) % 4;
+      const chord = chords[chordIndex];
+      const bassFreq = bassNotes[chordIndex];
+      const arpPattern = arpPatterns[chordIndex];
+
+      // Position within the beat
+      const sixteenthIndex = Math.floor((beatPos % 1) * 4);
+      const barBeat = Math.floor(beatPos % 4);
+      const arpStep = (barBeat * 4 + sixteenthIndex) % 8;
+
+      // Time within current sixteenth note (0-1)
+      const sixteenthT = ((beatPos % 1) * 4) % 1;
+
+      let sample = 0;
+
+      // === LAYER 1: BASS (square wave, quarter notes with decay) ===
+      const bassPhase = (t * bassFreq) % 1;
+      const bassEnv = Math.max(0, 1 - (beatPos % 1) * 1.8); // decay over beat
+      const bassWave = bassPhase < 0.5 ? 1 : -1;
+      sample += bassWave * bassEnv * 0.09;
+      // Sub-bass (sine, one octave lower)
+      sample += Math.sin(2 * Math.PI * bassFreq * 0.5 * t) * bassEnv * 0.06;
+
+      // === LAYER 2: ARPEGGIO (triangle wave, 16th notes) ===
+      const arpNoteIndex = arpPattern[arpStep];
+      const arpFreq = chord[arpNoteIndex] * (ch === 0 ? 1 : 1.002); // slight stereo detune
+      const arpPhase = (t * arpFreq) % 1;
+      const arpEnv = Math.max(0, 1 - sixteenthT * 2.5); // quick decay
+      // Triangle wave
+      const arpWave = 4 * Math.abs(arpPhase - 0.5) - 1;
+      sample += arpWave * arpEnv * 0.07;
+
+      // === LAYER 3: TICKING PULSE (8th notes - urgency clock) ===
+      const eighthPos = (beatPos * 2) % 1;
+      const tickEnv = eighthPos < 0.1 ? (1 - eighthPos / 0.1) : 0;
+      // High-pitched tick (noise-like)
+      const tickFreq = 1800 + chordIndex * 200;
+      sample += Math.sin(2 * Math.PI * tickFreq * t) * tickEnv * 0.025;
+
+      // === LAYER 4: PAD/DRONE (connects to Level 1 DNA) ===
+      const padRoot = chord[0] * 0.5;
+      const padFifth = chord[2] * 0.5;
+      const padBreath = 0.6 + 0.4 * Math.sin(2 * Math.PI * t / (beatDur * 8));
+      sample += Math.sin(2 * Math.PI * padRoot * t) * 0.03 * padBreath;
+      sample += Math.sin(2 * Math.PI * padFifth * t + Math.sin(t * 0.7) * 1.5) * 0.02 * padBreath;
+
+      // === LAYER 5: MELODIC HOOK (every 2 bars, ascending phrase) ===
+      const twoBarPos = (beatPos % 8) / 8; // 0-1 over 2 bars
+      if (twoBarPos < 0.5) {
+        // First bar: ascending motif on beats 1 and 3
+        const motifBeat = barBeat;
+        if (motifBeat === 0 || motifBeat === 2) {
+          const motifFreq = chord[motifBeat === 0 ? 2 : 3] * 2; // high octave
+          const motifEnv = Math.max(0, 1 - (beatPos % 1) * 3);
+          sample += Math.sin(2 * Math.PI * motifFreq * t) * motifEnv * 0.035;
+        }
+      }
+
+      // === SUBTLE NOISE (shared DNA with Level 1) ===
+      sample += (Math.random() * 2 - 1) * 0.008;
+
+      // Master envelope: slight fade at loop boundary for seamless loop
+      const fadeZone = 0.02; // 2% of duration
+      let masterEnv = 1;
+      if (t < duration * fadeZone) {
+        masterEnv = t / (duration * fadeZone);
+      } else if (t > duration * (1 - fadeZone)) {
+        masterEnv = (duration - t) / (duration * fadeZone);
+      }
+
+      data[i] = sample * masterEnv;
+    }
+  }
+  return buffer;
+};
+
+export const startRunnerBGM = () => {
+  const ac = ensureContext();
+  if (runnerBGMPlaying) return;
+  runnerBGMPlaying = true;
+  runnerBGMSource = ac.createBufferSource();
+  runnerBGMSource.buffer = buildRunnerBGMBuffer();
+  runnerBGMSource.loop = true;
+  runnerBGMSource.connect(bgmGain!);
+  runnerBGMSource.start();
+};
+
+export const stopRunnerBGM = () => {
+  if (runnerBGMSource) {
+    runnerBGMSource.stop();
+    runnerBGMSource = null;
+  }
+  runnerBGMPlaying = false;
+};
+
 export const sfxChapterTransition = () => {
   // Subtle whoosh + rising tone for entering a new zone
   const ac = ensureContext();

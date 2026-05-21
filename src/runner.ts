@@ -2,7 +2,7 @@
 // Geometry Dash / Flappy Bird inspired auto-scrolling level
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
-import { initAudio, startBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, sfxThrust } from './audio';
+import { initAudio, startRunnerBGM, stopRunnerBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, sfxThrust } from './audio';
 import { addToL2Leaderboard, getL2Leaderboard, type LeaderboardEntry } from './leaderboard';
 
 // === CONSTANTS ===
@@ -244,7 +244,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
         if (dialogPage >= jamesDialog.length) {
           dialogActive = false;
           initAudio();
-          startBGM();
+          startRunnerBGM();
         }
       }
       return;
@@ -2549,5 +2549,6 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     cancelAnimationFrame(frameId);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    stopRunnerBGM();
   };
 }
