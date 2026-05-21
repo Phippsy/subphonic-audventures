@@ -2411,7 +2411,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.textAlign = 'left';
   };
 
-  const drawSubphonicLogo = (x: number, y: number, size: number, color = '#ffffff') => {
+  const drawSubphonicLogo = (x: number, y: number, size: number, color = '#00ff00') => {
     // Subphonic logo: symmetrical cymatic pattern — cross/plus arrangement
     // 13 nodes: 3 top, 1 upper-mid, 5 middle, 1 lower-mid, 3 bottom
     const s = size / 28; // scale factor
@@ -2440,7 +2440,9 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
     // Draw organic curved connections (cymatic wave paths)
     ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(1, s * 1.6);
+    ctx.lineWidth = Math.max(1, s * 1.4);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.globalAlpha = 0.7;
 
     // Helper to draw quadratic bezier
