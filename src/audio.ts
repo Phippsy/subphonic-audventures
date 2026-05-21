@@ -734,20 +734,66 @@ export const sfxFall = () => {
 // === RUNNER LEVEL AUDIO ===
 
 export const sfxThrust = () => {
-  // Jet/thrust burst: filtered noise + rising tone
+  // Rocket booster ignition: low rumble + filtered noise roar + rising whistle
   const ac = ensureContext();
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(80, ac.currentTime);
-  osc.frequency.linearRampToValueAtTime(200, ac.currentTime + 0.08);
-  gain.gain.setValueAtTime(0.06, ac.currentTime);
-  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1);
-  osc.connect(gain);
-  gain.connect(sfxGain!);
-  osc.start(ac.currentTime);
-  osc.stop(ac.currentTime + 0.1);
-  playNoise(0.06, 0.04, 400, 'lowpass');
+  const now = ac.currentTime;
+
+  // Low-frequency rumble (engine core)
+  const rumble = ac.createOscillator();
+  const rumbleGain = ac.createGain();
+  rumble.type = 'sawtooth';
+  rumble.frequency.setValueAtTime(45, now);
+  rumble.frequency.linearRampToValueAtTime(60, now + 0.05);
+  rumble.frequency.linearRampToValueAtTime(50, now + 0.25);
+  rumbleGain.gain.setValueAtTime(0, now);
+  rumbleGain.gain.linearRampToValueAtTime(0.05, now + 0.02);
+  rumbleGain.gain.setValueAtTime(0.05, now + 0.15);
+  rumbleGain.gain.linearRampToValueAtTime(0, now + 0.3);
+  rumble.connect(rumbleGain);
+  rumbleGain.connect(sfxGain!);
+  rumble.start(now);
+  rumble.stop(now + 0.3);
+
+  // White noise burst (rocket exhaust roar) — bandpass filtered
+  const bufLen = Math.floor(ac.sampleRate * 0.3);
+  const noiseBuf = ac.createBuffer(1, bufLen, ac.sampleRate);
+  const noiseData = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) {
+    noiseData[i] = Math.random() * 2 - 1;
+  }
+  const noiseSrc = ac.createBufferSource();
+  noiseSrc.buffer = noiseBuf;
+  const bandpass = ac.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.setValueAtTime(600, now);
+  bandpass.frequency.linearRampToValueAtTime(900, now + 0.05);
+  bandpass.frequency.linearRampToValueAtTime(700, now + 0.25);
+  bandpass.Q.value = 1.2;
+  const noiseGain = ac.createGain();
+  noiseGain.gain.setValueAtTime(0, now);
+  noiseGain.gain.linearRampToValueAtTime(0.09, now + 0.02);
+  noiseGain.gain.setValueAtTime(0.07, now + 0.15);
+  noiseGain.gain.linearRampToValueAtTime(0, now + 0.3);
+  noiseSrc.connect(bandpass);
+  bandpass.connect(noiseGain);
+  noiseGain.connect(sfxGain!);
+  noiseSrc.start(now);
+  noiseSrc.stop(now + 0.3);
+
+  // High whistle overtone (thruster whine)
+  const whistle = ac.createOscillator();
+  const whistleGain = ac.createGain();
+  whistle.type = 'sine';
+  whistle.frequency.setValueAtTime(800, now);
+  whistle.frequency.linearRampToValueAtTime(1200, now + 0.06);
+  whistle.frequency.linearRampToValueAtTime(1000, now + 0.2);
+  whistleGain.gain.setValueAtTime(0, now);
+  whistleGain.gain.linearRampToValueAtTime(0.015, now + 0.03);
+  whistleGain.gain.linearRampToValueAtTime(0, now + 0.25);
+  whistle.connect(whistleGain);
+  whistleGain.connect(sfxGain!);
+  whistle.start(now);
+  whistle.stop(now + 0.25);
 };
 
 export const sfxStaticHit = () => {
