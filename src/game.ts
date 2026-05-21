@@ -194,10 +194,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   // === PITS ===
   const pits: Rect[] = [
     // Ch1: small pits
-    { x: 420, y: GROUND_Y, w: 95, h: 80 },
-    { x: 850, y: GROUND_Y, w: 110, h: 80 },
-    { x: 1300, y: GROUND_Y, w: 130, h: 80 },
-    { x: 1600, y: GROUND_Y, w: 150, h: 80 },
+    { x: 670, y: GROUND_Y, w: 95, h: 80 },
+    { x: 1100, y: GROUND_Y, w: 110, h: 80 },
+    { x: 1550, y: GROUND_Y, w: 130, h: 80 },
+    { x: 1750, y: GROUND_Y, w: 150, h: 80 },
     // Ch2: medium pits
     { x: 2050, y: GROUND_Y, w: 170, h: 80 },
     { x: 2550, y: GROUND_Y, w: 200, h: 80 },
@@ -223,13 +223,13 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
     // Ch1: gentle staircase platforms
     { x: 180, y: 405, w: 140, h: 24 },
-    { x: 370, y: 355, w: 120, h: 24 },
-    { x: 560, y: 330, w: 130, h: 24 },
-    { x: 750, y: 290, w: 120, h: 24 },
-    { x: 1000, y: 360, w: 130, h: 24 },
-    { x: 1180, y: 310, w: 150, h: 24 },
-    { x: 1430, y: 350, w: 130, h: 24 },
-    { x: 1650, y: 300, w: 120, h: 24 },
+    { x: 420, y: 380, w: 120, h: 24 },
+    { x: 620, y: 355, w: 120, h: 24 },
+    { x: 810, y: 330, w: 130, h: 24 },
+    { x: 1000, y: 290, w: 120, h: 24 },
+    { x: 1250, y: 360, w: 130, h: 24 },
+    { x: 1430, y: 310, w: 150, h: 24 },
+    { x: 1650, y: 350, w: 130, h: 24 },
 
     // Ch2: vertical stacks (use ladders to reach)
     { x: 1880, y: 380, w: 160, h: 24 },
@@ -320,9 +320,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   const sigs: Sig[] = [
     // Ch1
     { x: 240, y: 360, w: 18, h: 18, collected: false },
-    { x: 590, y: 284, w: 18, h: 18, collected: false },
-    { x: 790, y: 244, w: 18, h: 18, collected: false },
-    { x: 1210, y: 264, w: 18, h: 18, collected: false },
+    { x: 460, y: 335, w: 18, h: 18, collected: false },
+    { x: 840, y: 284, w: 18, h: 18, collected: false },
+    { x: 1040, y: 244, w: 18, h: 18, collected: false },
+    { x: 1460, y: 264, w: 18, h: 18, collected: false },
     { x: 1680, y: 254, w: 18, h: 18, collected: false },
     // Ch2
     { x: 1910, y: 134, w: 18, h: 18, collected: false },
@@ -354,9 +355,9 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   // === ENEMIES ===
   const enemies: Enemy[] = [
     // Ch1: slow, predictable
-    { x: 380, y: 321, w: 34, h: 34, vx: 80, leftBound: 345, rightBound: 480, alive: true },
-    { x: 900, y: 436, w: 34, h: 34, vx: -70, leftBound: 760, rightBound: 1020, alive: true },
-    { x: 1450, y: 316, w: 34, h: 34, vx: 75, leftBound: 1400, rightBound: 1560, alive: true },
+    { x: 640, y: 321, w: 34, h: 34, vx: 80, leftBound: 620, rightBound: 740, alive: true },
+    { x: 1150, y: 436, w: 34, h: 34, vx: -70, leftBound: 1010, rightBound: 1270, alive: true },
+    { x: 1700, y: 316, w: 34, h: 34, vx: 75, leftBound: 1650, rightBound: 1810, alive: true },
     // Ch2: mid-speed on platforms
     { x: 2170, y: 306, w: 36, h: 36, vx: 90, leftBound: 2150, rightBound: 2280, alive: true },
     { x: 2770, y: 266, w: 36, h: 36, vx: -85, leftBound: 2750, rightBound: 2900, alive: true },
@@ -380,7 +381,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
   // === LADDERS (mainly Ch2, some in Ch3) ===
   const ladders: Ladder[] = [
-    { x: 530, y: 330, w: 36, h: 140 },       // Ch1: optional shortcut
+    { x: 780, y: 330, w: 36, h: 140 },       // Ch1: optional shortcut
     { x: 1910, y: 180, w: 36, h: 290 },      // Ch2: main vertical climb
     { x: 2780, y: 200, w: 36, h: 270 },      // Ch2: climb to high sig
     { x: 3510, y: 260, w: 36, h: 210 },      // Ch2/3 transition
@@ -391,7 +392,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
   // === CHECKPOINTS ===
   const checkpoints: Checkpoint[] = [
-    { x: 980, y: 402, activated: false, spinTimer: 0 },
+    { x: 1230, y: 402, activated: false, spinTimer: 0 },
     { x: 1800, y: 402, activated: false, spinTimer: 0 },
     { x: 2770, y: 402, activated: false, spinTimer: 0 },
     { x: 3600, y: 402, activated: false, spinTimer: 0 },
@@ -570,7 +571,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
 
   // Extra life notification
   let extraLifeTimer = 0;
-  let extraLifeAwarded = false;
+  let extraLifeThreshold = 0; // 0 = not awarded, 10 = first awarded, 20 = second awarded
 
   // Tutorial popup state
   let tutorialPopup: { title: string; lines: string[]; showBots?: boolean } | null = null;
@@ -655,7 +656,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     missionTimer = 0;
     missionTimerRunning = true;
     finalTime = 0;
-    extraLifeAwarded = false;
+    extraLifeThreshold = 0;
     extraLifeTimer = 0;
     deathAnimTimer = 0;
     warpInTimer = 0;
@@ -698,15 +699,15 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   void handleDeath; // kept for non-pit deaths (future use)
 
   const handleEnemyDamage = (reason: string, chapter: number) => {
-    // MuffleBots (Ch1-2): 1 damage per hit (3 hits to die)
-    // DistortBots (Ch3-4): instant kill (3 damage)
-    const damage = chapter <= 1 ? 1 : 3;
+    // MuffleBots (Ch1-2): 1 damage per hit
+    // DistortBots (Ch3-4): 2 damage per hit
+    const damage = chapter <= 1 ? 1 : 2;
     state.lives -= damage;
     sfxDeath();
     if (damage === 1) {
       infoMessage = reason;
     } else {
-      infoMessage = reason + ' CRITICAL HIT!';
+      infoMessage = reason + ' HEAVY HIT!';
     }
     // Start death animation
     deathAnimX = player.x;
@@ -893,7 +894,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
             for (const cp of checkpoints) { cp.activated = false; cp.spinTimer = 0; }
             patrick.talked = false;
             patrick.questionAnswered = false;
-            extraLifeAwarded = false;
+            extraLifeThreshold = 0;
             firstEnemyEncountered = false;
             firstSigCollected = false;
             infoMessage = 'Mission live. Move right and restore Acoustica.';
@@ -1358,9 +1359,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
             color: ['#00ff00', '#fff', '#88ff88'][Math.floor(Math.random() * 3)],
           });
         }
-        // Extra life at 10 SIGs
-        if (state.insight === 10 && !extraLifeAwarded) {
-          extraLifeAwarded = true;
+        // Extra life at 10 and 20 SIGs
+        if (state.insight === 10 && extraLifeThreshold < 10) {
+          extraLifeThreshold = 10;
+          state.lives += 1;
+          extraLifeTimer = 3.5;
+          sfxExtraLife();
+        } else if (state.insight === 20 && extraLifeThreshold < 20) {
+          extraLifeThreshold = 20;
           state.lives += 1;
           extraLifeTimer = 3.5;
           sfxExtraLife();
@@ -3414,7 +3420,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillText('✦ EXTRA LIFE EARNED! ✦', WIDTH / 2, 138);
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
       ctx.font = '11px monospace';
-      ctx.fillText('10 SIGs collected — the signal rewards your clarity', WIDTH / 2, 156);
+      ctx.fillText(`${extraLifeThreshold} SIGs collected — the signal rewards your clarity`, WIDTH / 2, 156);
       ctx.textAlign = 'left';
     }
 
@@ -3606,10 +3612,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         ctx.font = '12px monospace';
         ctx.textAlign = 'left';
         ctx.fillText('Found in Zones 3 & 4.', dLeft, 195);
-        ctx.fillText('Emits a lethal frequency', dLeft, 215);
-        ctx.fillText('that kills instantly.', dLeft, 235);
+        ctx.fillText('Emits a heavy distortion', dLeft, 215);
+        ctx.fillText('that drains 2 health per hit.', dLeft, 235);
         ctx.fillStyle = `rgba(255, 80, 80, ${a})`;
-        ctx.fillText('ONE HIT = DEATH. Be careful!', dLeft, 258);
+        ctx.fillText('Much more dangerous. Stay alert!', dLeft, 258);
 
         // Shared tip at bottom
         ctx.textAlign = 'center';
