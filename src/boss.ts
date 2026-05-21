@@ -79,6 +79,8 @@ const victoryDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'Sonia', lines: ['With this restored to the', 'Frequency Tower, every voice,', 'every note, every whisper...'] },
   { speaker: 'Sonia', lines: ['...they\'ll all sing again.', 'Acoustica is free.'] },
   { speaker: 'Sonia', lines: ['Thank you, everyone.', 'Patrick, James... even your hats.', 'We did this together.'] },
+  { speaker: 'James', lines: ['Aw, Sonia. That\'s the spirit!', 'More merch for everybody!', '🎩 🎩 🎩'] },
+  { speaker: 'Patrick', lines: ['Well done. Truly. I\'m proud of you.', 'Now if you\'ll excuse me, I need to', 'file the victory in Adoptech. Compliance', 'doesn\'t sleep, even when evil does.'] },
 ];
 
 const sonicShellDialog: { lines: string[]; speaker: string }[] = [
@@ -2388,9 +2390,85 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, onQuit
 
     // Speaker indicator bar
     const speakerColor = dialog.speaker === 'Sonia' ? '#00ccaa' :
-                         dialog.speaker === 'Count Crosstalk' ? '#ff3344' : '#ffffff';
+                         dialog.speaker === 'Count Crosstalk' ? '#ff3344' :
+                         dialog.speaker === 'James' ? '#ffcc00' :
+                         dialog.speaker === 'Patrick' ? '#ff6644' : '#ffffff';
     ctx.fillStyle = speakerColor;
     ctx.fillRect(dx + 10, dy + 8, 3, 18);
+
+    // Character avatar
+    const avX = dx + dw - 55, avY = dy + 35;
+    ctx.save();
+    if (dialog.speaker === 'Sonia') {
+      // Teal circle, antenna
+      ctx.fillStyle = '#00ccaa';
+      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#003322';
+      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#00ffdd';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(avX, avY - 18); ctx.lineTo(avX, avY - 28); ctx.stroke();
+      ctx.fillStyle = '#00ffdd';
+      ctx.beginPath(); ctx.arc(avX, avY - 28, 3, 0, Math.PI * 2); ctx.fill();
+    } else if (dialog.speaker === 'James') {
+      // Gold circle with hat
+      ctx.fillStyle = '#ffcc00';
+      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#664400';
+      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      // Hat
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(avX - 12, avY - 22, 24, 6);
+      ctx.fillRect(avX - 8, avY - 32, 16, 12);
+      // Smile
+      ctx.strokeStyle = '#664400';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(avX, avY + 2, 7, 0.1, Math.PI - 0.1); ctx.stroke();
+    } else if (dialog.speaker === 'Patrick') {
+      // Red/orange circle with tie
+      ctx.fillStyle = '#ff6644';
+      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#441100';
+      ctx.beginPath(); ctx.arc(avX - 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(avX + 5, avY - 3, 3, 0, Math.PI * 2); ctx.fill();
+      // Stern expression
+      ctx.strokeStyle = '#441100';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(avX - 5, avY + 6); ctx.lineTo(avX + 5, avY + 6); ctx.stroke();
+      // Tie
+      ctx.fillStyle = '#cc0000';
+      ctx.beginPath();
+      ctx.moveTo(avX, avY + 18); ctx.lineTo(avX - 4, avY + 24);
+      ctx.lineTo(avX, avY + 32); ctx.lineTo(avX + 4, avY + 24);
+      ctx.closePath(); ctx.fill();
+      // Glasses
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(avX - 9, avY - 6, 7, 5);
+      ctx.strokeRect(avX + 2, avY - 6, 7, 5);
+      ctx.beginPath(); ctx.moveTo(avX - 2, avY - 4); ctx.lineTo(avX + 2, avY - 4); ctx.stroke();
+    } else if (dialog.speaker === 'Count Crosstalk') {
+      // Dark red spiky
+      ctx.fillStyle = '#661122';
+      ctx.beginPath(); ctx.arc(avX, avY, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff2244';
+      ctx.beginPath(); ctx.arc(avX - 5, avY - 2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(avX + 5, avY - 2, 3, 0, Math.PI * 2); ctx.fill();
+      // Spikes
+      ctx.fillStyle = '#ff2244';
+      for (let s = 0; s < 5; s++) {
+        const angle = -Math.PI / 2 + (s - 2) * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(avX + Math.cos(angle) * 16, avY + Math.sin(angle) * 16);
+        ctx.lineTo(avX + Math.cos(angle) * 26, avY + Math.sin(angle) * 26);
+        ctx.lineTo(avX + Math.cos(angle + 0.2) * 16, avY + Math.sin(angle + 0.2) * 16);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
     // Speaker name
     ctx.fillStyle = speakerColor;
     ctx.font = 'bold 14px monospace';
