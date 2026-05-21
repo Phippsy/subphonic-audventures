@@ -148,6 +148,12 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
   initAudio();
 
+  // === BACKGROUND STATE ===
+  let lightningTimer = 0;
+  let lightningFlash = 0;
+  let lightningBolts: { x: number; segments: { x: number; y: number }[]; alpha: number }[] = [];
+  let lavaParticles: { x: number; y: number; vx: number; vy: number; life: number; size: number }[] = [];
+
   // Game loop
   let lastTime = performance.now();
   let animId = 0;
@@ -156,6 +162,45 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     animTime += dt;
     elapsed += dt;
     difficulty = Math.min(1, elapsed / 90); // max difficulty at 90s
+
+    // === BACKGROUND EFFECTS UPDATE ===
+    // Lightning
+    lightningTimer -= dt;
+    if (lightningTimer <= 0) {
+      lightningTimer = 3 + Math.random() * 5 - difficulty * 2;
+      lightningFlash = 0.4;
+      // Generate bolt
+      const boltX = 100 + Math.random() * (WIDTH - 300);
+      const segs: { x: number; y: number }[] = [{ x: boltX, y: 0 }];
+      let sy = 0;
+      while (sy < HEIGHT * 0.6) {
+        sy += 20 + Math.random() * 30;
+        segs.push({ x: boltX + (Math.random() - 0.5) * 60, y: sy });
+      }
+      lightningBolts.push({ x: boltX, segments: segs, alpha: 1.0 });
+    }
+    if (lightningFlash > 0) lightningFlash -= dt * 2;
+    for (const bolt of lightningBolts) bolt.alpha -= dt * 2.5;
+    lightningBolts = lightningBolts.filter(b => b.alpha > 0);
+
+    // Lava particles
+    if (Math.random() < 0.15 + difficulty * 0.1) {
+      lavaParticles.push({
+        x: Math.random() * WIDTH,
+        y: HEIGHT + 5,
+        vx: (Math.random() - 0.5) * 30,
+        vy: -(40 + Math.random() * 80),
+        life: 1.5 + Math.random() * 1.5,
+        size: 2 + Math.random() * 3,
+      });
+    }
+    for (const lp of lavaParticles) {
+      lp.x += lp.vx * dt;
+      lp.y += lp.vy * dt;
+      lp.life -= dt;
+      lp.vy += 15 * dt; // slight gravity
+    }
+    lavaParticles = lavaParticles.filter(lp => lp.life > 0);
 
     // Dialog
     if (dialogActive) {
@@ -385,27 +430,75 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     }
     beams = beams.filter(b => b.duration > 0 || b.chargeTimer > 0);
 
-    // === FLYING BOTS ===
+    // === FLYING BOTS (cluster formations) ===
     botSpawnTimer -= dt;
     if (botSpawnTimer <= 0) {
-      const botType = Math.random() < 0.5 ? 'noise' : 'muffle';
-      flyingBots.push({
-        x: WIDTH + 40,
-        y: 40 + Math.random() * (HEIGHT - 100),
-        w: 28,
-        h: 28,
-        vx: -(BOT_SPEED + difficulty * 80 + Math.random() * 60),
-        type: botType,
-        alive: true,
-      });
-      botSpawnTimer = (2.0 - difficulty * 0.8) + Math.random() * 2;
+      const formationType = Math.random();
+      const botType: 'noise' | 'muffle' = Math.random() < 0.5 ? 'noise' : 'muffle';
+      const baseSpeed = -(BOT_SPEED + difficulty * 100 + Math.random() * 60);
+      const baseY = 60 + Math.random() * (HEIGHT - 160);
+
+      if (formationType < 0.25 || difficulty < 0.2) {
+        // Single bot (early game / occasional)
+        flyingBots.push({
+          x: WIDTH + 40,
+          y: baseY,
+          w: 28, h: 28,
+          vx: baseSpeed,
+          type: botType,
+          alive: true,
+        });
+      } else if (formationType < 0.55) {
+        // Wavy line formation (3-5 bots in a sine wave pattern)
+        const count = 3 + Math.floor(difficulty * 2);
+        for (let i = 0; i < count; i++) {
+          flyingBots.push({
+            x: WIDTH + 40 + i * 50,
+            y: baseY + Math.sin(i * 1.2) * 50,
+            w: 28, h: 28,
+            vx: baseSpeed * (0.9 + Math.random() * 0.2),
+            type: botType,
+            alive: true,
+          });
+        }
+      } else if (formationType < 0.75) {
+        // V-formation cluster (mixed types)
+        const count = 3 + Math.floor(difficulty * 2);
+        for (let i = 0; i < count; i++) {
+          const row = Math.floor(i / 2);
+          const side = i % 2 === 0 ? -1 : 1;
+          flyingBots.push({
+            x: WIDTH + 40 + row * 45,
+            y: baseY + side * (row + 1) * 30,
+            w: 28, h: 28,
+            vx: baseSpeed,
+            type: i % 2 === 0 ? 'noise' : 'muffle',
+            alive: true,
+          });
+        }
+      } else {
+        // Tight horizontal line (wall of bots)
+        const count = 3 + Math.floor(difficulty * 3);
+        const spacing = (HEIGHT - 120) / (count + 1);
+        for (let i = 0; i < count; i++) {
+          flyingBots.push({
+            x: WIDTH + 40 + (Math.random() * 30),
+            y: 60 + spacing * (i + 1) + (Math.random() - 0.5) * 20,
+            w: 28, h: 28,
+            vx: baseSpeed * 0.8,
+            type: Math.random() < 0.5 ? 'noise' : 'muffle',
+            alive: true,
+          });
+        }
+      }
+      botSpawnTimer = (2.5 - difficulty * 1.3) + Math.random() * 1.5;
     }
 
     for (const bot of flyingBots) {
       if (!bot.alive) continue;
       bot.x += bot.vx * dt;
-      // Sine wave movement
-      bot.y += Math.sin(animTime * 3 + bot.x * 0.01) * 40 * dt;
+      // Pronounced sine wave movement (more dramatic)
+      bot.y += Math.sin(animTime * 3.5 + bot.x * 0.015 + bot.y * 0.01) * 60 * dt;
 
       // Collision with player
       if (damageCooldown <= 0 &&
@@ -472,36 +565,184 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   };
 
   const draw = (ctx: CanvasRenderingContext2D) => {
-    // === BACKGROUND (dark void with static noise) ===
-    const bgGrad = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-    bgGrad.addColorStop(0, '#0a0a1a');
-    bgGrad.addColorStop(0.5, '#0d0d2a');
-    bgGrad.addColorStop(1, '#1a0a1a');
+    // === BACKGROUND (epic volcanic void with layers) ===
+
+    // Deep sky gradient - dark and ominous
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    bgGrad.addColorStop(0, '#030008');
+    bgGrad.addColorStop(0.3, '#0a0418');
+    bgGrad.addColorStop(0.6, '#1a0820');
+    bgGrad.addColorStop(0.85, '#2a0a10');
+    bgGrad.addColorStop(1, '#3a0a08');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Static noise background
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-    for (let i = 0; i < 40; i++) {
-      const nx = Math.random() * WIDTH;
-      const ny = Math.random() * HEIGHT;
-      ctx.fillRect(nx, ny, 2, 1);
+    // Lightning flash overlay
+    if (lightningFlash > 0) {
+      ctx.fillStyle = `rgba(180, 160, 255, ${lightningFlash * 0.15})`;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
-    // Grid lines (menacing)
-    ctx.strokeStyle = 'rgba(255, 0, 80, 0.05)';
+    // Stars (distant, twinkling)
+    for (let i = 0; i < 50; i++) {
+      const sx = (i * 137 + 50) % WIDTH;
+      const sy = (i * 97 + 20) % (HEIGHT * 0.4);
+      const twinkle = 0.3 + Math.sin(animTime * 2 + i * 1.3) * 0.2;
+      ctx.fillStyle = `rgba(255, 200, 255, ${twinkle})`;
+      ctx.fillRect(sx, sy, i % 3 === 0 ? 2 : 1, 1);
+    }
+
+    // Distant nebula clouds (parallax layer 1)
+    ctx.globalAlpha = 0.06 + Math.sin(animTime * 0.3) * 0.02;
+    for (let i = 0; i < 5; i++) {
+      const nx = (i * 240 + 80 + Math.sin(animTime * 0.2 + i) * 20) % WIDTH;
+      const ny = 40 + (i % 3) * 60;
+      const nGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, 80 + i * 20);
+      nGrad.addColorStop(0, i % 2 === 0 ? 'rgba(255, 50, 100, 0.4)' : 'rgba(100, 50, 255, 0.4)');
+      nGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = nGrad;
+      ctx.fillRect(nx - 100, ny - 60, 200, 120);
+    }
+    ctx.globalAlpha = 1;
+
+    // Volcanic mountains (parallax layer 2) - jagged silhouettes
+    ctx.fillStyle = '#0a0412';
+    ctx.beginPath();
+    ctx.moveTo(0, HEIGHT);
+    for (let mx = 0; mx <= WIDTH; mx += 20) {
+      const mh = Math.sin(mx * 0.008 + 1.5) * 80 + Math.sin(mx * 0.02 + 0.3) * 30 + 140;
+      ctx.lineTo(mx, HEIGHT - mh);
+    }
+    ctx.lineTo(WIDTH, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mountain highlights/lava veins
+    ctx.strokeStyle = `rgba(255, 60, 20, ${0.15 + Math.sin(animTime * 1.5) * 0.08})`;
+    ctx.lineWidth = 1;
+    for (let mx = 0; mx < WIDTH; mx += 60) {
+      const mh = Math.sin(mx * 0.008 + 1.5) * 80 + Math.sin(mx * 0.02 + 0.3) * 30 + 140;
+      const baseY = HEIGHT - mh;
+      ctx.beginPath();
+      ctx.moveTo(mx + 10, baseY + 20);
+      ctx.lineTo(mx + 15 + Math.sin(animTime + mx) * 5, baseY + 50);
+      ctx.lineTo(mx + 8, baseY + 80);
+      ctx.stroke();
+    }
+
+    // Closer volcanic range (parallax layer 3)
+    ctx.fillStyle = '#12061a';
+    ctx.beginPath();
+    ctx.moveTo(0, HEIGHT);
+    for (let mx = 0; mx <= WIDTH; mx += 15) {
+      const mh = Math.sin(mx * 0.012 + 3.0) * 50 + Math.sin(mx * 0.03) * 25 + 90;
+      ctx.lineTo(mx, HEIGHT - mh);
+    }
+    ctx.lineTo(WIDTH, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    // Lava pool at the bottom
+    const lavaGrad = ctx.createLinearGradient(0, HEIGHT - 40, 0, HEIGHT);
+    lavaGrad.addColorStop(0, 'rgba(80, 10, 0, 0)');
+    lavaGrad.addColorStop(0.3, `rgba(150, 30, 0, ${0.4 + Math.sin(animTime * 2) * 0.1})`);
+    lavaGrad.addColorStop(0.7, `rgba(255, 80, 0, ${0.6 + Math.sin(animTime * 3) * 0.15})`);
+    lavaGrad.addColorStop(1, `rgba(255, 150, 0, ${0.8 + Math.sin(animTime * 4) * 0.1})`);
+    ctx.fillStyle = lavaGrad;
+    ctx.fillRect(0, HEIGHT - 40, WIDTH, 40);
+
+    // Lava surface bubbling
+    for (let i = 0; i < 8; i++) {
+      const bx = (i * 130 + Math.sin(animTime * 1.5 + i * 2) * 20) % WIDTH;
+      const bubSize = 3 + Math.sin(animTime * 4 + i * 1.7) * 2;
+      if (bubSize > 3) {
+        ctx.fillStyle = `rgba(255, 200, 50, ${0.5 + Math.sin(animTime * 5 + i) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(bx, HEIGHT - 38 - Math.abs(Math.sin(animTime * 3 + i)) * 6, bubSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Lava particles (rising embers)
+    for (const lp of lavaParticles) {
+      const lpAlpha = lp.life / 3;
+      ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, ${lpAlpha})`;
+      ctx.beginPath();
+      ctx.arc(lp.x, lp.y, lp.size * lpAlpha, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Lightning bolts
+    for (const bolt of lightningBolts) {
+      ctx.strokeStyle = `rgba(200, 180, 255, ${bolt.alpha * 0.9})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bolt.segments[0].x, bolt.segments[0].y);
+      for (let i = 1; i < bolt.segments.length; i++) {
+        ctx.lineTo(bolt.segments[i].x, bolt.segments[i].y);
+      }
+      ctx.stroke();
+      // Glow
+      ctx.strokeStyle = `rgba(150, 100, 255, ${bolt.alpha * 0.4})`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(bolt.segments[0].x, bolt.segments[0].y);
+      for (let i = 1; i < bolt.segments.length; i++) {
+        ctx.lineTo(bolt.segments[i].x, bolt.segments[i].y);
+      }
+      ctx.stroke();
+      // Branch
+      if (bolt.segments.length > 3) {
+        const branchIdx = 2;
+        const bs = bolt.segments[branchIdx];
+        ctx.strokeStyle = `rgba(200, 180, 255, ${bolt.alpha * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bs.x, bs.y);
+        ctx.lineTo(bs.x + 30, bs.y + 25);
+        ctx.lineTo(bs.x + 20, bs.y + 50);
+        ctx.stroke();
+      }
+    }
+
+    // Energy grid (subtle, menacing)
+    const gridPulse = 0.03 + Math.sin(animTime * 2) * 0.015;
+    ctx.strokeStyle = `rgba(255, 0, 80, ${gridPulse})`;
     ctx.lineWidth = 1;
     for (let gx = 0; gx < WIDTH; gx += 80) {
       ctx.beginPath();
       ctx.moveTo(gx, 0);
-      ctx.lineTo(gx, HEIGHT);
+      ctx.lineTo(gx, HEIGHT - 40);
       ctx.stroke();
     }
-    for (let gy = 0; gy < HEIGHT; gy += 80) {
+    for (let gy = 0; gy < HEIGHT - 40; gy += 80) {
       ctx.beginPath();
       ctx.moveTo(0, gy);
       ctx.lineTo(WIDTH, gy);
       ctx.stroke();
+    }
+
+    // Static noise particles
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+    for (let i = 0; i < 60; i++) {
+      const nx = Math.random() * WIDTH;
+      const ny = Math.random() * (HEIGHT - 40);
+      ctx.fillRect(nx, ny, 2 + Math.random() * 2, 1);
+    }
+
+    // Atmospheric haze (vignette edges)
+    const vigGrad = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.3, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.8);
+    vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Floating debris / ash
+    ctx.fillStyle = 'rgba(80, 40, 20, 0.3)';
+    for (let i = 0; i < 15; i++) {
+      const dx = ((i * 67 + animTime * 15) % WIDTH);
+      const dy = ((i * 103 + animTime * (8 + i * 2)) % (HEIGHT - 60));
+      ctx.fillRect(dx, dy, 2, 2);
     }
 
     // === DRAW BEAMS ===
@@ -554,48 +795,93 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // === DRAW FLYING BOTS ===
     for (const bot of flyingBots) {
       if (!bot.alive) continue;
+      const bcx = bot.x + 14;
+      const bcy = bot.y + 14;
+
       if (bot.type === 'noise') {
-        // Red angular bot with wings
+        // Red angular bot with wings + energy trail
+        // Glow aura
+        const botGlow = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, 20);
+        botGlow.addColorStop(0, 'rgba(255, 50, 30, 0.2)');
+        botGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctx.fillStyle = botGlow;
+        ctx.fillRect(bot.x - 6, bot.y - 6, 40, 40);
+        // Body
         ctx.fillStyle = '#cc2222';
         ctx.fillRect(bot.x + 4, bot.y + 4, 20, 20);
         ctx.fillStyle = '#ff4444';
         ctx.fillRect(bot.x + 6, bot.y + 6, 16, 16);
-        // Wings
+        // Inner circuit lines
+        ctx.strokeStyle = '#ff8866';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(bot.x + 8, bot.y + 8);
+        ctx.lineTo(bot.x + 14, bot.y + 14);
+        ctx.lineTo(bot.x + 20, bot.y + 8);
+        ctx.stroke();
+        // Wings (animated flutter)
+        const wingFlutter = Math.sin(animTime * 12 + bot.x * 0.1) * 2;
         ctx.fillStyle = '#881111';
         ctx.beginPath();
-        ctx.moveTo(bot.x + 14, bot.y);
-        ctx.lineTo(bot.x + 4, bot.y + 4);
-        ctx.lineTo(bot.x + 14, bot.y + 8);
+        ctx.moveTo(bcx, bot.y + wingFlutter);
+        ctx.lineTo(bot.x, bot.y + 4);
+        ctx.lineTo(bcx, bot.y + 8);
         ctx.closePath();
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(bot.x + 14, bot.y + 28);
-        ctx.lineTo(bot.x + 4, bot.y + 24);
-        ctx.lineTo(bot.x + 14, bot.y + 20);
+        ctx.moveTo(bcx, bot.y + 28 - wingFlutter);
+        ctx.lineTo(bot.x, bot.y + 24);
+        ctx.lineTo(bcx, bot.y + 20);
         ctx.closePath();
         ctx.fill();
-        // Eye
-        ctx.fillStyle = '#ffcc00';
+        // Eyes (glowing)
+        const eyePulse = 0.7 + Math.sin(animTime * 8 + bot.x) * 0.3;
+        ctx.fillStyle = `rgba(255, 200, 0, ${eyePulse})`;
         ctx.fillRect(bot.x + 8, bot.y + 10, 4, 4);
         ctx.fillRect(bot.x + 16, bot.y + 10, 4, 4);
+        // Exhaust trail
+        ctx.fillStyle = 'rgba(255, 80, 30, 0.3)';
+        ctx.fillRect(bot.x + 28, bcy - 2, 8 + Math.random() * 6, 4);
+        ctx.fillStyle = 'rgba(255, 40, 10, 0.15)';
+        ctx.fillRect(bot.x + 34, bcy - 1, 10 + Math.random() * 8, 2);
       } else {
-        // Purple rounded muffle bot
+        // Purple rounded muffle bot + distortion field
+        // Glow aura
+        const muffGlow = ctx.createRadialGradient(bcx, bcy, 0, bcx, bcy, 22);
+        muffGlow.addColorStop(0, 'rgba(150, 50, 255, 0.25)');
+        muffGlow.addColorStop(1, 'rgba(100, 0, 200, 0)');
+        ctx.fillStyle = muffGlow;
+        ctx.beginPath();
+        ctx.arc(bcx, bcy, 22, 0, Math.PI * 2);
+        ctx.fill();
+        // Body
         ctx.fillStyle = '#6622aa';
         ctx.beginPath();
-        ctx.arc(bot.x + 14, bot.y + 14, 12, 0, Math.PI * 2);
+        ctx.arc(bcx, bcy, 12, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#9944dd';
         ctx.beginPath();
-        ctx.arc(bot.x + 14, bot.y + 14, 8, 0, Math.PI * 2);
+        ctx.arc(bcx, bcy, 8, 0, Math.PI * 2);
         ctx.fill();
-        // Muffling waves
-        ctx.strokeStyle = `rgba(200, 100, 255, ${0.5 + Math.sin(animTime * 6) * 0.3})`;
-        ctx.lineWidth = 1;
-        for (let w = 0; w < 2; w++) {
+        // Inner eye
+        ctx.fillStyle = '#ddaaff';
+        ctx.beginPath();
+        ctx.arc(bcx, bcy, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Distortion waves (animated)
+        ctx.strokeStyle = `rgba(200, 100, 255, ${0.5 + Math.sin(animTime * 6 + bot.x * 0.05) * 0.3})`;
+        ctx.lineWidth = 1.5;
+        for (let w = 0; w < 3; w++) {
+          const waveR = 14 + w * 5 + Math.sin(animTime * 4 + w) * 2;
           ctx.beginPath();
-          ctx.arc(bot.x + 14, bot.y + 14, 14 + w * 4, -0.5, 0.5);
+          ctx.arc(bcx, bcy, waveR, -0.7 - w * 0.2, 0.7 + w * 0.2);
           ctx.stroke();
         }
+        // Trailing mist
+        ctx.fillStyle = 'rgba(100, 50, 200, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(bot.x + 30, bcy, 8 + Math.random() * 4, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -726,65 +1012,180 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.save();
     ctx.translate(shake, shake * 0.5);
 
+    // === ENERGY AURA around mech ===
+    if (bossPhase === 'fight') {
+      const auraAlpha = 0.08 + Math.sin(animTime * 3) * 0.04;
+      const auraGrad = ctx.createRadialGradient(bx + 90, 280, 50, bx + 90, 280, 250);
+      auraGrad.addColorStop(0, `rgba(255, 0, 80, ${auraAlpha})`);
+      auraGrad.addColorStop(0.5, `rgba(150, 0, 100, ${auraAlpha * 0.5})`);
+      auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = auraGrad;
+      ctx.fillRect(bx - 80, 50, 360, 480);
+    }
+
     // === MECH BODY (giant, imposing) ===
-    // Legs/base
+    // Legs/base with hydraulics
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(bx + 20, HEIGHT - 120, 40, 120);
     ctx.fillRect(bx + 100, HEIGHT - 120, 40, 120);
+    // Hydraulic pistons
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fillRect(bx + 30, HEIGHT - 100, 8, 60);
+    ctx.fillRect(bx + 110, HEIGHT - 100, 8, 60);
+    ctx.fillStyle = '#5a5a7a';
+    ctx.fillRect(bx + 32, HEIGHT - 80, 4, 30);
+    ctx.fillRect(bx + 112, HEIGHT - 80, 4, 30);
     // Armour plates on legs
     ctx.fillStyle = '#2a2a4a';
     ctx.fillRect(bx + 22, HEIGHT - 110, 36, 20);
     ctx.fillRect(bx + 102, HEIGHT - 110, 36, 20);
+    // Knee joints (glowing)
+    ctx.fillStyle = `rgba(255, 50, 80, ${0.4 + Math.sin(animTime * 5) * 0.2})`;
+    ctx.beginPath();
+    ctx.arc(bx + 40, HEIGHT - 90, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx + 120, HEIGHT - 90, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Foot anchors
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(bx + 12, HEIGHT - 8, 56, 8);
+    ctx.fillRect(bx + 92, HEIGHT - 8, 56, 8);
 
-    // Torso (massive)
-    const torsoGrad = ctx.createLinearGradient(bx, 150, bx + 180, 150);
+    // Torso (massive, layered armour)
+    const torsoGrad = ctx.createLinearGradient(bx, 150, bx + 180, 400);
     torsoGrad.addColorStop(0, '#1a1a3a');
-    torsoGrad.addColorStop(0.5, '#2a2a5a');
+    torsoGrad.addColorStop(0.3, '#2a2a5a');
+    torsoGrad.addColorStop(0.7, '#222244');
     torsoGrad.addColorStop(1, '#1a1a3a');
     ctx.fillStyle = torsoGrad;
     ctx.fillRect(bx, 180, 180, 240);
 
-    // Armour plating
+    // Armour plating with rivets
     ctx.strokeStyle = '#4a4a8a';
     ctx.lineWidth = 2;
     ctx.strokeRect(bx + 10, 200, 160, 60);
     ctx.strokeRect(bx + 10, 270, 160, 60);
     ctx.strokeRect(bx + 10, 340, 160, 60);
+    // Rivets
+    ctx.fillStyle = '#6a6a9a';
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 2; col++) {
+        ctx.beginPath();
+        ctx.arc(bx + 16 + col * 150, 210 + row * 70, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Central power core (on torso)
+    const corePulse = 0.5 + Math.sin(animTime * 4) * 0.3;
+    const coreGrad = ctx.createRadialGradient(bx + 90, 300, 0, bx + 90, 300, 25);
+    coreGrad.addColorStop(0, `rgba(255, 50, 100, ${corePulse})`);
+    coreGrad.addColorStop(0.5, `rgba(200, 0, 60, ${corePulse * 0.6})`);
+    coreGrad.addColorStop(1, 'rgba(100, 0, 30, 0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(bx + 90, 300, 25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 100, 150, ${corePulse})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx + 90, 300, 18, 0, Math.PI * 2);
+    ctx.stroke();
 
-    // Static energy vents
-    ctx.fillStyle = `rgba(255, 0, 80, ${0.3 + Math.sin(animTime * 4) * 0.2})`;
+    // Static energy vents (pulsing brighter)
+    const ventPulse = 0.4 + Math.sin(animTime * 4) * 0.3;
+    ctx.fillStyle = `rgba(255, 0, 80, ${ventPulse})`;
     ctx.fillRect(bx + 15, 210, 30, 8);
     ctx.fillRect(bx + 135, 210, 30, 8);
     ctx.fillRect(bx + 15, 280, 30, 8);
     ctx.fillRect(bx + 135, 280, 30, 8);
+    // Vent glow
+    ctx.fillStyle = `rgba(255, 100, 100, ${ventPulse * 0.3})`;
+    ctx.fillRect(bx + 10, 208, 40, 12);
+    ctx.fillRect(bx + 130, 208, 40, 12);
 
-    // Arms (beam emitters)
+    // Power conduits (connecting core to arms)
+    ctx.strokeStyle = `rgba(255, 50, 80, ${0.3 + Math.sin(animTime * 6) * 0.15})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + 65, 300);
+    ctx.quadraticCurveTo(bx + 20, 280, bx - 10, 227);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx + 115, 300);
+    ctx.quadraticCurveTo(bx + 160, 280, bx + 190, 227);
+    ctx.stroke();
+
+    // Arms (beam emitters, more detailed)
     // Left arm
     ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx - 30, 220, 35, 15);
+    ctx.fillRect(bx - 40, 218, 45, 18);
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fillRect(bx - 35, 220, 35, 14);
     ctx.fillStyle = '#ff3344';
-    ctx.fillRect(bx - 30, 225, 8, 5); // emitter tip
+    ctx.fillRect(bx - 42, 223, 10, 8); // emitter tip
+    ctx.fillStyle = `rgba(255, 100, 50, ${0.5 + Math.sin(animTime * 7) * 0.3})`;
+    ctx.fillRect(bx - 42, 225, 10, 4); // emitter glow
     // Right arm
-    ctx.fillRect(bx + 175, 220, 35, 15);
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(bx + 175, 218, 45, 18);
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fillRect(bx + 180, 220, 35, 14);
     ctx.fillStyle = '#ff3344';
-    ctx.fillRect(bx + 202, 225, 8, 5);
+    ctx.fillRect(bx + 212, 223, 10, 8);
+    ctx.fillStyle = `rgba(255, 100, 50, ${0.5 + Math.sin(animTime * 7 + 1) * 0.3})`;
+    ctx.fillRect(bx + 212, 225, 10, 4);
 
-    // Shoulder pauldrons
+    // Shoulder pauldrons (larger, with spikes)
     ctx.fillStyle = '#3a3a6a';
     ctx.beginPath();
-    ctx.arc(bx + 10, 195, 25, Math.PI, 0);
+    ctx.arc(bx + 10, 195, 28, Math.PI, 0);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(bx + 170, 195, 25, Math.PI, 0);
+    ctx.arc(bx + 170, 195, 28, Math.PI, 0);
+    ctx.fill();
+    // Spikes on shoulders
+    ctx.fillStyle = '#5a5a8a';
+    ctx.beginPath();
+    ctx.moveTo(bx - 5, 195);
+    ctx.lineTo(bx - 15, 175);
+    ctx.lineTo(bx + 5, 195);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx + 175, 195);
+    ctx.lineTo(bx + 195, 175);
+    ctx.lineTo(bx + 185, 195);
+    ctx.closePath();
     ctx.fill();
 
     // === COCKPIT / HEAD ===
     const headY = bossHeadY;
     const headFlash = bossHitFlash > 0 ? '#ffffff' : '#3a1a4a';
 
-    // Neck connection
+    // Neck connection (armoured)
     ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx + 60, 180, 60, headY - 160);
+    ctx.fillRect(bx + 55, 180, 70, headY - 160);
+    ctx.strokeStyle = '#4a4a6a';
+    ctx.lineWidth = 1;
+    for (let ny = 185; ny < headY - 10; ny += 12) {
+      ctx.beginPath();
+      ctx.moveTo(bx + 58, ny);
+      ctx.lineTo(bx + 122, ny);
+      ctx.stroke();
+    }
+
+    // Head glow (danger zone indicator)
+    if (bossPhase === 'fight') {
+      const headGlowR = BOSS_HEAD_RADIUS + 12 + Math.sin(animTime * 3) * 4;
+      const headGlow = ctx.createRadialGradient(bx + 60, headY, BOSS_HEAD_RADIUS, bx + 60, headY, headGlowR);
+      headGlow.addColorStop(0, 'rgba(255, 0, 60, 0)');
+      headGlow.addColorStop(1, `rgba(255, 0, 60, ${0.1 + Math.sin(animTime * 5) * 0.05})`);
+      ctx.fillStyle = headGlow;
+      ctx.beginPath();
+      ctx.arc(bx + 60, headY, headGlowR, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Head (cockpit with Count Crosstalk inside)
     ctx.fillStyle = headFlash;
@@ -792,11 +1193,17 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
     ctx.fill();
 
-    // Head armour
+    // Head armour ring
     ctx.strokeStyle = bossHitFlash > 0 ? '#ffff00' : '#6a3a8a';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
+    // Secondary armour ring
+    ctx.strokeStyle = bossHitFlash > 0 ? '#ffcc00' : '#4a2a6a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS + 5, 0, Math.PI * 2);
     ctx.stroke();
 
     // Visor / cockpit glass
@@ -804,72 +1211,109 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.beginPath();
     ctx.ellipse(bx + 60, headY, 22, 15, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Visor reflection
+    ctx.fillStyle = 'rgba(255, 200, 200, 0.15)';
+    ctx.beginPath();
+    ctx.ellipse(bx + 55, headY - 4, 8, 4, -0.3, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Count Crosstalk's face behind visor (evil eyes)
-    ctx.fillStyle = '#ff0000';
+    // Count Crosstalk's face behind visor (evil eyes with pupils)
+    const eyeGlow = 0.7 + Math.sin(animTime * 6) * 0.3;
+    ctx.fillStyle = `rgba(255, 0, 0, ${eyeGlow})`;
     ctx.beginPath();
-    ctx.arc(bx + 52, headY - 3, 4, 0, Math.PI * 2);
+    ctx.arc(bx + 52, headY - 3, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(bx + 68, headY - 3, 4, 0, Math.PI * 2);
+    ctx.arc(bx + 68, headY - 3, 5, 0, Math.PI * 2);
     ctx.fill();
+    // Yellow slit pupils
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(bx + 51, headY - 5, 2, 5);
+    ctx.fillRect(bx + 67, headY - 5, 2, 5);
     // Angry brow
     ctx.strokeStyle = '#880000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(bx + 47, headY - 9);
-    ctx.lineTo(bx + 55, headY - 6);
+    ctx.moveTo(bx + 45, headY - 11);
+    ctx.lineTo(bx + 55, headY - 7);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(bx + 73, headY - 9);
-    ctx.lineTo(bx + 65, headY - 6);
+    ctx.moveTo(bx + 75, headY - 11);
+    ctx.lineTo(bx + 65, headY - 7);
     ctx.stroke();
 
-    // Crown/horns
+    // Crown/horns (larger, more menacing)
     ctx.fillStyle = '#ff3344';
     ctx.beginPath();
-    ctx.moveTo(bx + 40, headY - BOSS_HEAD_RADIUS);
-    ctx.lineTo(bx + 45, headY - BOSS_HEAD_RADIUS - 15);
-    ctx.lineTo(bx + 50, headY - BOSS_HEAD_RADIUS);
+    ctx.moveTo(bx + 38, headY - BOSS_HEAD_RADIUS + 2);
+    ctx.lineTo(bx + 43, headY - BOSS_HEAD_RADIUS - 20);
+    ctx.lineTo(bx + 48, headY - BOSS_HEAD_RADIUS + 2);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(bx + 70, headY - BOSS_HEAD_RADIUS);
-    ctx.lineTo(bx + 75, headY - BOSS_HEAD_RADIUS - 15);
-    ctx.lineTo(bx + 80, headY - BOSS_HEAD_RADIUS);
+    ctx.moveTo(bx + 72, headY - BOSS_HEAD_RADIUS + 2);
+    ctx.lineTo(bx + 77, headY - BOSS_HEAD_RADIUS - 20);
+    ctx.lineTo(bx + 82, headY - BOSS_HEAD_RADIUS + 2);
+    ctx.closePath();
+    ctx.fill();
+    // Center horn (smaller)
+    ctx.beginPath();
+    ctx.moveTo(bx + 55, headY - BOSS_HEAD_RADIUS + 4);
+    ctx.lineTo(bx + 60, headY - BOSS_HEAD_RADIUS - 12);
+    ctx.lineTo(bx + 65, headY - BOSS_HEAD_RADIUS + 4);
     ctx.closePath();
     ctx.fill();
 
-    // HP bar above boss
-    const hpBarW = 140;
-    const hpBarH = 10;
-    const hpBarX = bx + 20;
-    const hpBarY = 40;
+    // HP bar above boss (more dramatic)
+    const hpBarW = 160;
+    const hpBarH = 12;
+    const hpBarX = bx + 10;
+    const hpBarY = 38;
+    // Bar background with glow
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(hpBarX - 2, hpBarY - 2, hpBarW + 4, hpBarH + 4);
     ctx.fillStyle = '#333';
     ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
     const hpRatio = Math.max(0, bossHP / BOSS_MAX_HP);
     const hpColor = hpRatio > 0.5 ? '#ff3344' : hpRatio > 0.25 ? '#ff8800' : '#ffcc00';
     ctx.fillStyle = hpColor;
     ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
+    // HP bar shimmer
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + Math.sin(animTime * 6) * 0.05})`;
+    ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio * 0.5, hpBarH / 2);
     ctx.strokeStyle = '#666';
     ctx.lineWidth = 1;
     ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '10px monospace';
+    ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 4);
+    ctx.fillText('COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 6);
+    // Skull icon next to name
+    ctx.font = '10px monospace';
+    ctx.fillText('☠', hpBarX - 10, hpBarY - 5);
     ctx.textAlign = 'left';
 
-    // Ambient static around mech
+    // Ambient static arcs around mech (more dramatic)
     if (bossPhase === 'fight') {
-      ctx.strokeStyle = `rgba(255, 0, 80, ${0.15 + Math.sin(animTime * 5) * 0.1})`;
-      ctx.lineWidth = 1;
-      for (let s = 0; s < 5; s++) {
+      // Static crackling lines
+      ctx.strokeStyle = `rgba(255, 0, 80, ${0.2 + Math.sin(animTime * 5) * 0.1})`;
+      ctx.lineWidth = 1.5;
+      for (let s = 0; s < 8; s++) {
         const sx2 = bx + Math.random() * 180;
         const sy2 = 100 + Math.random() * 350;
         ctx.beginPath();
         ctx.moveTo(sx2, sy2);
-        ctx.lineTo(sx2 + (Math.random() - 0.5) * 20, sy2 + (Math.random() - 0.5) * 20);
+        ctx.lineTo(sx2 + (Math.random() - 0.5) * 30, sy2 + (Math.random() - 0.5) * 30);
+        ctx.lineTo(sx2 + (Math.random() - 0.5) * 20, sy2 + (Math.random() - 0.5) * 40);
+        ctx.stroke();
+      }
+      // Energy arcs between shoulders
+      if (Math.sin(animTime * 7) > 0.5) {
+        ctx.strokeStyle = 'rgba(255, 100, 200, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bx + 10, 185);
+        ctx.quadraticCurveTo(bx + 90, 170 + Math.random() * 20, bx + 170, 185);
         ctx.stroke();
       }
     }
