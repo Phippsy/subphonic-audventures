@@ -393,7 +393,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
   // === CHECKPOINTS ===
   const checkpoints: Checkpoint[] = [
     { x: 1230, y: 402, activated: false, spinTimer: 0 },
-    { x: 1800, y: 402, activated: false, spinTimer: 0 },
+    { x: 1920, y: 402, activated: false, spinTimer: 0 },
     { x: 2770, y: 402, activated: false, spinTimer: 0 },
     { x: 3600, y: 402, activated: false, spinTimer: 0 },
     { x: 4800, y: 402, activated: false, spinTimer: 0 },
