@@ -2411,92 +2411,30 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.textAlign = 'left';
   };
 
+  const logoSprite = new Image();
+  logoSprite.src = '/subphonic-logo-mark.svg';
+
   const drawSubphonicLogo = (x: number, y: number, size: number, color = '#00ff00') => {
-    // Subphonic logo: symmetrical cymatic pattern — cross/plus arrangement
-    // 13 nodes: 3 top, 1 upper-mid, 5 middle, 1 lower-mid, 3 bottom
-    const s = size / 28; // scale factor
+    const px = Math.round(x);
+    const py = Math.round(y);
+    const ps = Math.max(8, Math.round(size));
 
-    // Node positions (symmetrical cross pattern)
-    const nodes: { cx: number; cy: number; r: number }[] = [
-      // Row 1 (top): left, center, right
-      { cx: 3, cy: 3, r: 2.2 },    // 0: top-left
-      { cx: 14, cy: 3, r: 2.4 },   // 1: top-center
-      { cx: 25, cy: 3, r: 2.2 },   // 2: top-right
-      // Row 2 (upper-mid): center only
-      { cx: 14, cy: 9, r: 2.6 },   // 3: upper-mid
-      // Row 3 (middle): full width
-      { cx: 3, cy: 14, r: 2.2 },   // 4: mid-left
-      { cx: 8.5, cy: 14, r: 2.4 }, // 5: mid-inner-left
-      { cx: 14, cy: 14, r: 2.8 },  // 6: center
-      { cx: 19.5, cy: 14, r: 2.4 },// 7: mid-inner-right
-      { cx: 25, cy: 14, r: 2.2 },  // 8: mid-right
-      // Row 4 (lower-mid): center only
-      { cx: 14, cy: 19, r: 2.6 },  // 9: lower-mid
-      // Row 5 (bottom): left, center, right
-      { cx: 3, cy: 25, r: 2.2 },   // 10: bottom-left
-      { cx: 14, cy: 25, r: 2.4 },  // 11: bottom-center
-      { cx: 25, cy: 25, r: 2.2 },  // 12: bottom-right
-    ];
+    if (logoSprite.complete && logoSprite.naturalWidth > 0) {
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      const prevAlpha = ctx.globalAlpha;
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 1;
+      ctx.drawImage(logoSprite, px, py, ps, ps);
 
-    // Draw organic curved connections (cymatic wave paths)
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(1, s * 1.4);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = 0.7;
+      if (color.toLowerCase() !== '#ffffff') {
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = color;
+        ctx.fillRect(px, py, ps, ps);
+        ctx.globalCompositeOperation = 'source-over';
+      }
 
-    // Helper to draw quadratic bezier
-    const curve = (from: number, to: number, cpx: number, cpy: number) => {
-      ctx.beginPath();
-      ctx.moveTo(x + nodes[from].cx * s, y + nodes[from].cy * s);
-      ctx.quadraticCurveTo(x + cpx * s, y + cpy * s, x + nodes[to].cx * s, y + nodes[to].cy * s);
-      ctx.stroke();
-    };
-    const line = (from: number, to: number) => {
-      ctx.beginPath();
-      ctx.moveTo(x + nodes[from].cx * s, y + nodes[from].cy * s);
-      ctx.lineTo(x + nodes[to].cx * s, y + nodes[to].cy * s);
-      ctx.stroke();
-    };
-
-    // Top-left quadrant curves (mirrored in all 4 quadrants)
-    curve(0, 3, 6, 4);     // top-left → upper-mid (curve right)
-    curve(0, 5, 3, 8);     // top-left → mid-inner-left (curve down)
-    curve(1, 3, 14, 6);    // top-center → upper-mid (straight-ish)
-    curve(0, 4, 1, 8);     // top-left → mid-left (curve inward)
-
-    // Top-right quadrant (mirror)
-    curve(2, 3, 22, 4);    // top-right → upper-mid (curve left)
-    curve(2, 7, 25, 8);    // top-right → mid-inner-right (curve down)
-    curve(2, 8, 27, 8);    // top-right → mid-right (curve inward)
-
-    // Bottom-left quadrant (mirror)
-    curve(10, 9, 6, 24);   // bottom-left → lower-mid (curve right)
-    curve(10, 5, 3, 20);   // bottom-left → mid-inner-left (curve up)
-    curve(11, 9, 14, 22);  // bottom-center → lower-mid (straight-ish)
-    curve(10, 4, 1, 20);   // bottom-left → mid-left (curve inward)
-
-    // Bottom-right quadrant (mirror)
-    curve(12, 9, 22, 24);  // bottom-right → lower-mid (curve left)
-    curve(12, 7, 25, 20);  // bottom-right → mid-inner-right (curve up)
-    curve(12, 8, 27, 20);  // bottom-right → mid-right (curve inward)
-
-    // Central cross connections
-    line(3, 6);   // upper-mid → center
-    line(9, 6);   // lower-mid → center
-    line(5, 6);   // mid-inner-left → center
-    line(7, 6);   // mid-inner-right → center
-    line(4, 5);   // mid-left → mid-inner-left
-    line(7, 8);   // mid-inner-right → mid-right
-
-    ctx.globalAlpha = 1;
-
-    // Draw nodes (dots)
-    ctx.fillStyle = color;
-    for (const node of nodes) {
-      ctx.beginPath();
-      ctx.arc(x + node.cx * s, y + node.cy * s, node.r * s, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.imageSmoothingEnabled = prevSmoothing;
+      ctx.globalAlpha = prevAlpha;
     }
   };
 
