@@ -2,7 +2,7 @@
 // Geometry Dash / Flappy Bird inspired auto-scrolling level
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
-import { initAudio, startRunnerBGM, stopRunnerBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, sfxThrust } from './audio';
+import { initAudio, startRunnerBGM, stopRunnerBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, startThrustLoop, stopThrustLoop } from './audio';
 import { addToL2Leaderboard, getL2Leaderboard, type LeaderboardEntry } from './leaderboard';
 
 // === CONSTANTS ===
@@ -340,12 +340,16 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     thrusting = !!(keys.arrowup || keys.w || keys[' ']);
     if (thrusting) {
       playerVY += THRUST_FORCE * dt;
-      // Play thrust sound only on initial press
+      // Start continuous thrust sound
       if (!wasThrusting) {
-        sfxThrust();
+        startThrustLoop();
       }
     } else {
       playerVY += GRAVITY * dt;
+      // Stop thrust sound when released
+      if (wasThrusting) {
+        stopThrustLoop();
+      }
     }
     wasThrusting = thrusting;
     playerVY = Math.max(-MAX_VY, Math.min(MAX_VY, playerVY));
@@ -360,6 +364,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       screenFlash = 1.0;
       screenShake = 10;
       sfxStaticHit();
+      stopThrustLoop();
     }
 
     // Timers
@@ -427,6 +432,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
           if (health <= 0) {
             gameOver = true;
             gameOverTimer = 0;
+            stopThrustLoop();
           }
         }
       }
@@ -2737,5 +2743,6 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     stopRunnerBGM();
+    stopThrustLoop();
   };
 }

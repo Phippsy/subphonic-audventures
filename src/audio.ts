@@ -733,68 +733,104 @@ export const sfxFall = () => {
 
 // === RUNNER LEVEL AUDIO ===
 
-export const sfxThrust = () => {
-  // Rocket booster ignition: low rumble + filtered noise roar + rising whistle
+// Continuous thrust loop — starts/stops with button hold
+let thrustRumble: OscillatorNode | null = null;
+let thrustNoise: AudioBufferSourceNode | null = null;
+let thrustWhistle: OscillatorNode | null = null;
+let thrustGainNode: GainNode | null = null;
+
+export const startThrustLoop = () => {
+  if (thrustRumble) return; // already playing
   const ac = ensureContext();
   const now = ac.currentTime;
 
-  // Low-frequency rumble (engine core)
-  const rumble = ac.createOscillator();
-  const rumbleGain = ac.createGain();
-  rumble.type = 'sawtooth';
-  rumble.frequency.setValueAtTime(45, now);
-  rumble.frequency.linearRampToValueAtTime(60, now + 0.05);
-  rumble.frequency.linearRampToValueAtTime(50, now + 0.25);
-  rumbleGain.gain.setValueAtTime(0, now);
-  rumbleGain.gain.linearRampToValueAtTime(0.05, now + 0.02);
-  rumbleGain.gain.setValueAtTime(0.05, now + 0.15);
-  rumbleGain.gain.linearRampToValueAtTime(0, now + 0.3);
-  rumble.connect(rumbleGain);
-  rumbleGain.connect(sfxGain!);
-  rumble.start(now);
-  rumble.stop(now + 0.3);
+  // Master gain for the whole thrust sound
+  thrustGainNode = ac.createGain();
+  thrustGainNode.gain.setValueAtTime(0, now);
+  thrustGainNode.gain.linearRampToValueAtTime(1, now + 0.06);
+  thrustGainNode.connect(sfxGain!);
 
-  // White noise burst (rocket exhaust roar) — bandpass filtered
-  const bufLen = Math.floor(ac.sampleRate * 0.3);
+  // Low-frequency rumble (continuous engine)
+  thrustRumble = ac.createOscillator();
+  const rumbleGain = ac.createGain();
+  thrustRumble.type = 'sawtooth';
+  thrustRumble.frequency.setValueAtTime(48, now);
+  // Subtle frequency wobble via LFO
+  const lfo = ac.createOscillator();
+  const lfoGain = ac.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 3;
+  lfoGain.gain.value = 5;
+  lfo.connect(lfoGain);
+  lfoGain.connect(thrustRumble.frequency);
+  lfo.start(now);
+  rumbleGain.gain.value = 0.045;
+  thrustRumble.connect(rumbleGain);
+  rumbleGain.connect(thrustGainNode);
+  thrustRumble.start(now);
+
+  // White noise loop (exhaust roar) — bandpass filtered
+  const bufLen = Math.floor(ac.sampleRate * 2);
   const noiseBuf = ac.createBuffer(1, bufLen, ac.sampleRate);
   const noiseData = noiseBuf.getChannelData(0);
   for (let i = 0; i < bufLen; i++) {
     noiseData[i] = Math.random() * 2 - 1;
   }
-  const noiseSrc = ac.createBufferSource();
-  noiseSrc.buffer = noiseBuf;
+  thrustNoise = ac.createBufferSource();
+  thrustNoise.buffer = noiseBuf;
+  thrustNoise.loop = true;
   const bandpass = ac.createBiquadFilter();
   bandpass.type = 'bandpass';
-  bandpass.frequency.setValueAtTime(600, now);
-  bandpass.frequency.linearRampToValueAtTime(900, now + 0.05);
-  bandpass.frequency.linearRampToValueAtTime(700, now + 0.25);
-  bandpass.Q.value = 1.2;
+  bandpass.frequency.value = 750;
+  bandpass.Q.value = 1.0;
   const noiseGain = ac.createGain();
-  noiseGain.gain.setValueAtTime(0, now);
-  noiseGain.gain.linearRampToValueAtTime(0.09, now + 0.02);
-  noiseGain.gain.setValueAtTime(0.07, now + 0.15);
-  noiseGain.gain.linearRampToValueAtTime(0, now + 0.3);
-  noiseSrc.connect(bandpass);
+  noiseGain.gain.value = 0.07;
+  thrustNoise.connect(bandpass);
   bandpass.connect(noiseGain);
-  noiseGain.connect(sfxGain!);
-  noiseSrc.start(now);
-  noiseSrc.stop(now + 0.3);
+  noiseGain.connect(thrustGainNode);
+  thrustNoise.start(now);
 
-  // High whistle overtone (thruster whine)
-  const whistle = ac.createOscillator();
+  // High whistle (thruster whine, continuous)
+  thrustWhistle = ac.createOscillator();
   const whistleGain = ac.createGain();
-  whistle.type = 'sine';
-  whistle.frequency.setValueAtTime(800, now);
-  whistle.frequency.linearRampToValueAtTime(1200, now + 0.06);
-  whistle.frequency.linearRampToValueAtTime(1000, now + 0.2);
-  whistleGain.gain.setValueAtTime(0, now);
-  whistleGain.gain.linearRampToValueAtTime(0.015, now + 0.03);
-  whistleGain.gain.linearRampToValueAtTime(0, now + 0.25);
-  whistle.connect(whistleGain);
-  whistleGain.connect(sfxGain!);
-  whistle.start(now);
-  whistle.stop(now + 0.25);
+  thrustWhistle.type = 'sine';
+  thrustWhistle.frequency.value = 1050;
+  // Slight vibrato on whistle
+  const lfo2 = ac.createOscillator();
+  const lfo2Gain = ac.createGain();
+  lfo2.type = 'sine';
+  lfo2.frequency.value = 6;
+  lfo2Gain.gain.value = 30;
+  lfo2.connect(lfo2Gain);
+  lfo2Gain.connect(thrustWhistle.frequency);
+  lfo2.start(now);
+  whistleGain.gain.value = 0.012;
+  thrustWhistle.connect(whistleGain);
+  whistleGain.connect(thrustGainNode);
+  thrustWhistle.start(now);
 };
+
+export const stopThrustLoop = () => {
+  if (!thrustGainNode) return;
+  const ac = ensureContext();
+  const now = ac.currentTime;
+  // Quick fade out
+  thrustGainNode.gain.cancelScheduledValues(now);
+  thrustGainNode.gain.setValueAtTime(thrustGainNode.gain.value, now);
+  thrustGainNode.gain.linearRampToValueAtTime(0, now + 0.08);
+  // Stop nodes after fade
+  const stopTime = now + 0.1;
+  try { thrustRumble?.stop(stopTime); } catch { /* already stopped */ }
+  try { thrustNoise?.stop(stopTime); } catch { /* already stopped */ }
+  try { thrustWhistle?.stop(stopTime); } catch { /* already stopped */ }
+  thrustRumble = null;
+  thrustNoise = null;
+  thrustWhistle = null;
+  thrustGainNode = null;
+};
+
+// Keep the one-shot for backward compat (unused now but harmless)
+export const sfxThrust = () => { startThrustLoop(); };
 
 export const sfxStaticHit = () => {
   // Getting hit by static: harsh crackle
@@ -1028,9 +1064,39 @@ export const sfxBossBeam = () => {
 };
 
 export const sfxPlayerShoot = () => {
-  // Green sig projectile: quick pew sound
-  playTone(600, 0.06, 'square', 0.1, 0.005, 0.02);
-  playTone(900, 0.04, 'triangle', 0.05, 0.005, 0.01);
+  // Laser cannon: high-to-low frequency sweep + electric zap
+  const ac = ensureContext();
+  const now = ac.currentTime;
+
+  // Main laser sweep (high → low, classic pew-pew)
+  const laser = ac.createOscillator();
+  const laserGain = ac.createGain();
+  laser.type = 'square';
+  laser.frequency.setValueAtTime(1800, now);
+  laser.frequency.exponentialRampToValueAtTime(300, now + 0.12);
+  laserGain.gain.setValueAtTime(0.04, now);
+  laserGain.gain.linearRampToValueAtTime(0.03, now + 0.04);
+  laserGain.gain.linearRampToValueAtTime(0, now + 0.14);
+  laser.connect(laserGain);
+  laserGain.connect(sfxGain!);
+  laser.start(now);
+  laser.stop(now + 0.15);
+
+  // Harmonics layer (brighter, more sci-fi)
+  const harm = ac.createOscillator();
+  const harmGain = ac.createGain();
+  harm.type = 'sawtooth';
+  harm.frequency.setValueAtTime(2400, now);
+  harm.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+  harmGain.gain.setValueAtTime(0.02, now);
+  harmGain.gain.linearRampToValueAtTime(0, now + 0.1);
+  harm.connect(harmGain);
+  harmGain.connect(sfxGain!);
+  harm.start(now);
+  harm.stop(now + 0.1);
+
+  // Quick noise burst (impact sizzle)
+  playNoise(0.05, 0.025, 3000, 'highpass');
 };
 
 export const sfxBossDefeat = () => {
