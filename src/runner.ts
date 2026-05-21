@@ -52,6 +52,19 @@ const jamesDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'James', lines: ['...let\'s just say I need them ALL', 'back to achieve my true potential.', 'Good luck out there!'] },
 ];
 
+const endDialog: { lines: string[]; speaker: string }[] = [
+  { speaker: 'James', lines: ['Sonia! You absolute LEGEND.', 'The Static Fields are cleansed!', 'And... are those... MY HATS?!'] },
+  { speaker: 'Sonia', lines: ['Every last one. You\'re welcome.'] },
+  { speaker: 'James', lines: ['Magnificent. With all my hats returned,', 'I can finally achieve my ultimate form.', 'Behold... MEGA EVOLUTION!'] },
+  { speaker: 'James', lines: ['*puts on all hats simultaneously*', '', '...nothing happened. But I FEEL powerful.'] },
+  { speaker: 'Sonia', lines: ['James, that\'s just a headache.'] },
+  { speaker: 'James', lines: ['Wait — I just had an INCREDIBLE idea.', 'What if we built a Subphonic app that', 'replaces the entire stock market?'] },
+  { speaker: 'James', lines: ['Sound-based algorithmic trading!', 'Each stock has a unique frequency!', 'Bull markets sound like jazz!'] },
+  { speaker: 'Sonia', lines: ['James, we just saved the world', 'from sonic destruction. Maybe take', 'a day off?'] },
+  { speaker: 'James', lines: ['You\'re right, you\'re right.', 'I\'ll start the prototype tomorrow.', 'Tuesday at the latest.'] },
+  { speaker: 'James', lines: ['Thanks Sonia. Genuinely.', 'Acoustica owes you everything.', 'Now... where did I put my whiteboard...'] },
+];
+
 // === LEVEL GENERATOR ===
 function generateObstacles(_scrollSpeed: number, progress: number): Obstacle[] {
   const obstacles: Obstacle[] = [];
@@ -168,6 +181,10 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
   let wonNameEntry = '';
   let wonNameSubmitted = false;
   let wonLeaderboard: LeaderboardEntry[] = [];
+  let wonEndDialog = false;
+  let wonEndDialogPage = 0;
+  let wonEndDialogAlpha = 0;
+  let wonEndDialogCooldown = 0;
   let animTime = 0;
 
   // Damage feedback
@@ -236,11 +253,27 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     if (gameOver || won) {
       gameOverTimer += dt;
       if (won) {
-        // Only allow continue after name submitted
-        if (wonNameSubmitted && gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
+        if (wonEndDialog) {
+          // End dialog (James thanking Sonia)
+          wonEndDialogAlpha = Math.min(1, wonEndDialogAlpha + dt * 3);
+          if (wonEndDialogCooldown > 0) wonEndDialogCooldown -= dt;
+          if (wonEndDialogCooldown <= 0 && (keys[' '] || keys.enter)) {
+            keys[' '] = false;
+            keys.enter = false;
+            wonEndDialogPage++;
+            wonEndDialogAlpha = 0;
+            wonEndDialogCooldown = 0.35;
+            if (wonEndDialogPage >= endDialog.length) {
+              onComplete();
+            }
+          }
+        } else if (wonNameSubmitted && gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
           keys[' '] = false;
           keys.enter = false;
-          onComplete();
+          wonEndDialog = true;
+          wonEndDialogPage = 0;
+          wonEndDialogAlpha = 0;
+          wonEndDialogCooldown = 0.5;
         }
       } else {
         if (gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
@@ -1198,6 +1231,48 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
           ctx.fillText('SPACE to continue  |  Q to quit', WIDTH / 2, HEIGHT - 30);
         }
       }
+      ctx.textAlign = 'left';
+    }
+
+    // End dialog (post-leaderboard, James thanking Sonia)
+    if (wonEndDialog) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.97)';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      const ePage = endDialog[wonEndDialogPage];
+
+      // Avatar (always full alpha)
+      ctx.textAlign = 'center';
+      if (ePage.speaker === 'James') {
+        drawJames(ctx, WIDTH / 2 - 40, 30);
+      } else {
+        drawSonia(ctx, WIDTH / 2 - 18, 40);
+      }
+
+      // Speaker name
+      ctx.fillStyle = ePage.speaker === 'James' ? '#ffaa00' : '#00ccff';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(ePage.speaker, WIDTH / 2, 145);
+
+      // Text (fades in)
+      ctx.globalAlpha = wonEndDialogAlpha;
+      ctx.fillStyle = '#e0e0e0';
+      ctx.font = '14px monospace';
+      ePage.lines.forEach((line, i) => {
+        ctx.fillText(line, WIDTH / 2, 190 + i * 30);
+      });
+
+      // Page indicator
+      ctx.fillStyle = '#555';
+      ctx.font = '10px monospace';
+      ctx.fillText(`${wonEndDialogPage + 1} / ${endDialog.length}`, WIDTH / 2, HEIGHT - 80);
+
+      // Prompt
+      ctx.fillStyle = '#00ff00';
+      ctx.font = '12px monospace';
+      ctx.fillText('Press SPACE or ENTER to continue', WIDTH / 2, HEIGHT - 50);
+
+      ctx.globalAlpha = 1;
       ctx.textAlign = 'left';
     }
   };
