@@ -228,7 +228,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     { x: 620, y: 355, w: 120, h: 24 },
     { x: 810, y: 330, w: 130, h: 24 },
     { x: 1000, y: 290, w: 120, h: 24 },
-    { x: 1250, y: 310, w: 130, h: 24 },
+    { x: 1310, y: 335, w: 120, h: 24 },
     { x: 1430, y: 310, w: 150, h: 24 },
     { x: 1650, y: 350, w: 130, h: 24 },
 
@@ -616,7 +616,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
         'Collect 20 signal fragments (sigs)',
         'scattered across four zones.',
         '',
-        'Find Patrick, the Compliance Officer,',
+        'Find Patrick, the CIO,',
         'and earn the key to open the final gate.',
         '',
         'Defeat Count Crosstalk. Restore Acoustica.',
@@ -2764,7 +2764,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     ctx.textAlign = 'center';
     ctx.fillStyle = '#00ff00';
     ctx.font = 'bold 14px monospace';
-    ctx.fillText('PATRICK - Compliance Officer', WIDTH / 2, 112);
+    ctx.fillText('PATRICK - CIO', WIDTH / 2, 112);
     ctx.textAlign = 'left';
 
     // Dialog box (below portrait)
