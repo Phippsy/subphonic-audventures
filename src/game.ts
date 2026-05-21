@@ -281,6 +281,10 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     { x: 5430, y: 10, w: 140, h: 24 },
     { x: 5620, y: -75, w: 130, h: 24 },
     { x: 5440, y: -160, w: 130, h: 24 },
+    // Secret wine alcove: dead-end branching LEFT from the climb (cul-de-sac)
+    { x: 5280, y: -210, w: 70, h: 20 },
+    { x: 5150, y: -270, w: 65, h: 20 },
+    { x: 5060, y: -340, w: 80, h: 20 },  // wine bottle sits here
     // Summit ridge - wider platforms, traverse right
     { x: 5620, y: -240, w: 120, h: 24 },
     { x: 5790, y: -220, w: 110, h: 24 },
@@ -344,8 +348,8 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
     { x: 7890, y: 354, w: 18, h: 18, collected: false },
   ];
 
-  // === WINE BOTTLE (hidden easter egg on Resonance Spire summit) ===
-  const wineBottle = { x: 5820, y: -310, w: 16, h: 24, collected: state.hasWine };
+  // === WINE BOTTLE (hidden easter egg on secret alcove off Resonance Spire) ===
+  const wineBottle = { x: 5088, y: -364, w: 16, h: 24, collected: state.hasWine };
 
   // === ENEMIES ===
   const enemies: Enemy[] = [

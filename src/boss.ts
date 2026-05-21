@@ -122,6 +122,15 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   let elapsed = 0;
   let difficulty = 0; // 0-1, increases over time
 
+  // Screen shake
+  let screenShakeX = 0;
+  let screenShakeY = 0;
+  let screenShakeIntensity = 0;
+
+  // Phase transition effects
+  let phaseFlash = 0;
+  let lastPhase = 1;
+
   let gameOver = false;
   let gameOverTimer = 0;
   let wonDialogActive = false;
@@ -201,6 +210,38 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       lp.vy += 15 * dt; // slight gravity
     }
     lavaParticles = lavaParticles.filter(lp => lp.life > 0);
+
+    // Screen shake decay
+    if (screenShakeIntensity > 0) {
+      screenShakeX = (Math.random() - 0.5) * screenShakeIntensity;
+      screenShakeY = (Math.random() - 0.5) * screenShakeIntensity;
+      screenShakeIntensity *= 0.9;
+      if (screenShakeIntensity < 0.3) screenShakeIntensity = 0;
+    } else {
+      screenShakeX = 0;
+      screenShakeY = 0;
+    }
+
+    // Phase transition detection
+    if (phaseFlash > 0) phaseFlash -= dt * 2;
+    const currentPhase = bossHP > BOSS_MAX_HP * 0.66 ? 1 : bossHP > BOSS_MAX_HP * 0.33 ? 2 : 3;
+    if (currentPhase !== lastPhase && bossPhase === 'fight') {
+      lastPhase = currentPhase;
+      phaseFlash = 1.0;
+      screenShakeIntensity = 12;
+      // Phase transition explosion particles
+      for (let i = 0; i < 20; i++) {
+        particles.push({
+          x: BOSS_X + 90,
+          y: HEIGHT / 2,
+          vx: (Math.random() - 0.5) * 400,
+          vy: (Math.random() - 0.5) * 400,
+          life: 1.0,
+          maxLife: 1.0,
+          color: `hsl(${Math.random() * 60 + 300}, 100%, 60%)`,
+        });
+      }
+    }
 
     // Dialog
     if (dialogActive) {
@@ -283,18 +324,30 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // Boss death sequence
     if (bossPhase === 'dying') {
       bossDeathTimer += dt;
-      // Explosions
-      if (Math.random() < 0.3) {
-        particles.push({
-          x: BOSS_X + Math.random() * 180 - 40,
-          y: Math.random() * HEIGHT * 0.7 + 40,
-          vx: (Math.random() - 0.5) * 200,
-          vy: (Math.random() - 0.5) * 200,
-          life: 0.8,
-          maxLife: 0.8,
-          color: `hsl(${Math.random() * 60}, 100%, 60%)`,
-        });
+      // Escalating explosions — more frequent and bigger over time
+      const intensity = Math.min(1, bossDeathTimer / 2.5);
+      const spawnRate = 0.2 + intensity * 0.6;
+      if (Math.random() < spawnRate) {
+        const cx = BOSS_X + Math.random() * 180 - 40;
+        const cy = Math.random() * HEIGHT * 0.7 + 40;
+        // Burst of particles at each explosion point
+        const count = 3 + Math.floor(intensity * 5);
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 80 + Math.random() * 250;
+          particles.push({
+            x: cx + (Math.random() - 0.5) * 20,
+            y: cy + (Math.random() - 0.5) * 20,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.5 + Math.random() * 0.6,
+            maxLife: 1.1,
+            color: `hsl(${Math.random() * 50 + 10}, 100%, ${50 + Math.random() * 30}%)`,
+          });
+        }
       }
+      // Screen shake during death (increasing)
+      screenShakeIntensity = 3 + intensity * 8;
       if (bossDeathTimer > 3) {
         bossPhase = 'dead';
         wonDialogActive = true;
@@ -302,6 +355,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         wonDialogAlpha = 0;
         wonDialogCooldown = 0.5;
         stopBossBGM();
+        screenShakeIntensity = 0;
       }
       // Update particles during death
       for (const p of particles) {
@@ -351,24 +405,27 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       p.life -= dt;
 
       // Check hit on boss head
-      const headCX = BOSS_X + 60;
+      const headCX = BOSS_X + 90;
       const headCY = bossHeadY;
       const dist = Math.hypot(p.x - headCX, p.y - headCY);
       if (dist < BOSS_HEAD_RADIUS + 4) {
         p.life = 0;
         bossHP--;
         bossHitFlash = 0.2;
+        screenShakeIntensity = Math.max(screenShakeIntensity, 4);
         sfxBossHit();
-        // Hit particles
-        for (let i = 0; i < 6; i++) {
+        // Hit particles (big satisfying burst)
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
+          const speed = 150 + Math.random() * 250;
           particles.push({
             x: p.x,
             y: p.y,
-            vx: (Math.random() - 0.5) * 300,
-            vy: (Math.random() - 0.5) * 300,
-            life: 0.4,
-            maxLife: 0.4,
-            color: `hsl(${120 + Math.random() * 40}, 90%, 60%)`,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.4 + Math.random() * 0.3,
+            maxLife: 0.7,
+            color: `hsl(${100 + Math.random() * 60}, 90%, ${50 + Math.random() * 30}%)`,
           });
         }
         if (bossHP <= 0) {
@@ -407,6 +464,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         beam.chargeTimer -= dt;
         if (beam.chargeTimer <= 0) {
           beam.active = true;
+          screenShakeIntensity = Math.max(screenShakeIntensity, 6);
         }
       } else {
         beam.duration -= dt;
@@ -565,6 +623,10 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   };
 
   const draw = (ctx: CanvasRenderingContext2D) => {
+    // Apply screen shake
+    ctx.save();
+    ctx.translate(screenShakeX, screenShakeY);
+
     // === BACKGROUND (epic volcanic void with layers) ===
 
     // Deep sky gradient - dark and ominous
@@ -748,47 +810,83 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // === DRAW BEAMS ===
     for (const beam of beams) {
       if (beam.chargeTimer > 0) {
-        // Charging indicator: flashing line
+        // Charging indicator: dramatic buildup
         const chargeProgress = 1 - beam.chargeTimer / BEAM_CHARGE_TIME;
         const flash = Math.sin(animTime * 20) * 0.5 + 0.5;
-        ctx.strokeStyle = `rgba(255, 0, 60, ${chargeProgress * flash * 0.8})`;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
+        // Warning zone (where beam will hit)
+        ctx.fillStyle = `rgba(255, 0, 40, ${chargeProgress * 0.05})`;
+        ctx.fillRect(0, beam.y - beam.width / 2, BOSS_X - 20, beam.width);
+        // Charging line
+        ctx.strokeStyle = `rgba(255, 0, 60, ${chargeProgress * flash * 0.9})`;
+        ctx.lineWidth = 1 + chargeProgress * 2;
+        ctx.setLineDash([6 - chargeProgress * 4, 6 + chargeProgress * 2]);
         ctx.beginPath();
         ctx.moveTo(BOSS_X - 20, beam.y);
         ctx.lineTo(0, beam.y);
         ctx.stroke();
         ctx.setLineDash([]);
-        // Warning icon
+        // Charge buildup at emitter
+        const chargeGlow = ctx.createRadialGradient(BOSS_X - 25, beam.y, 0, BOSS_X - 25, beam.y, 20 * chargeProgress);
+        chargeGlow.addColorStop(0, `rgba(255, 100, 50, ${chargeProgress * 0.8})`);
+        chargeGlow.addColorStop(0.5, `rgba(255, 0, 50, ${chargeProgress * 0.4})`);
+        chargeGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctx.fillStyle = chargeGlow;
+        ctx.beginPath();
+        ctx.arc(BOSS_X - 25, beam.y, 20 * chargeProgress, 0, Math.PI * 2);
+        ctx.fill();
+        // Warning icons (pulsing)
         ctx.fillStyle = `rgba(255, 200, 0, ${chargeProgress * flash})`;
-        ctx.font = '16px monospace';
+        ctx.font = `${12 + chargeProgress * 6}px monospace`;
         ctx.textAlign = 'right';
-        ctx.fillText('⚠', BOSS_X - 30, beam.y + 6);
+        ctx.fillText('⚠', BOSS_X - 35, beam.y + 6);
         ctx.textAlign = 'left';
       } else if (beam.active) {
-        // Active beam: solid static energy
-        const beamAlpha = Math.min(1, beam.duration / 0.3); // fade out at end
-        const grad = ctx.createLinearGradient(0, beam.y - beam.width / 2, 0, beam.y + beam.width / 2);
-        grad.addColorStop(0, `rgba(255, 0, 60, 0)`);
-        grad.addColorStop(0.3, `rgba(255, 40, 80, ${0.6 * beamAlpha})`);
-        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * beamAlpha})`);
-        grad.addColorStop(0.7, `rgba(255, 40, 80, ${0.6 * beamAlpha})`);
-        grad.addColorStop(1, `rgba(255, 0, 60, 0)`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, beam.y - beam.width / 2, BOSS_X - 20, beam.width);
-        // Crackling edges
-        ctx.strokeStyle = `rgba(255, 200, 100, ${0.5 * beamAlpha})`;
+        // Active beam: massive energy discharge
+        const beamAlpha = Math.min(1, beam.duration / 0.3);
+        // Outer glow (wide, faint)
+        const outerGrad = ctx.createLinearGradient(0, beam.y - beam.width, 0, beam.y + beam.width);
+        outerGrad.addColorStop(0, `rgba(255, 0, 40, 0)`);
+        outerGrad.addColorStop(0.3, `rgba(255, 20, 60, ${0.15 * beamAlpha})`);
+        outerGrad.addColorStop(0.5, `rgba(255, 50, 80, ${0.25 * beamAlpha})`);
+        outerGrad.addColorStop(0.7, `rgba(255, 20, 60, ${0.15 * beamAlpha})`);
+        outerGrad.addColorStop(1, `rgba(255, 0, 40, 0)`);
+        ctx.fillStyle = outerGrad;
+        ctx.fillRect(0, beam.y - beam.width, BOSS_X - 10, beam.width * 2);
+        // Main beam core
+        const coreGrad = ctx.createLinearGradient(0, beam.y - beam.width / 2, 0, beam.y + beam.width / 2);
+        coreGrad.addColorStop(0, `rgba(255, 0, 60, 0)`);
+        coreGrad.addColorStop(0.2, `rgba(255, 40, 80, ${0.7 * beamAlpha})`);
+        coreGrad.addColorStop(0.4, `rgba(255, 150, 150, ${0.9 * beamAlpha})`);
+        coreGrad.addColorStop(0.5, `rgba(255, 255, 255, ${beamAlpha})`);
+        coreGrad.addColorStop(0.6, `rgba(255, 150, 150, ${0.9 * beamAlpha})`);
+        coreGrad.addColorStop(0.8, `rgba(255, 40, 80, ${0.7 * beamAlpha})`);
+        coreGrad.addColorStop(1, `rgba(255, 0, 60, 0)`);
+        ctx.fillStyle = coreGrad;
+        ctx.fillRect(0, beam.y - beam.width / 2, BOSS_X - 10, beam.width);
+        // Crackling edges (more chaotic)
+        ctx.strokeStyle = `rgba(255, 220, 100, ${0.6 * beamAlpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let bx2 = 0; bx2 < BOSS_X - 10; bx2 += 8) {
+          ctx.lineTo(bx2, beam.y - beam.width / 2 + (Math.random() - 0.3) * 6);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        for (let bx2 = 0; bx2 < BOSS_X - 10; bx2 += 8) {
+          ctx.lineTo(bx2, beam.y + beam.width / 2 - (Math.random() - 0.3) * 6);
+        }
+        ctx.stroke();
+        // Interior energy streaks
+        ctx.strokeStyle = `rgba(255, 255, 200, ${0.4 * beamAlpha})`;
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let bx = 0; bx < BOSS_X - 20; bx += 12) {
-          ctx.lineTo(bx, beam.y - beam.width / 2 + Math.random() * 4);
+        for (let s = 0; s < 3; s++) {
+          ctx.beginPath();
+          const yOff = (Math.random() - 0.5) * beam.width * 0.5;
+          for (let bx2 = 0; bx2 < BOSS_X - 10; bx2 += 15) {
+            ctx.lineTo(bx2, beam.y + yOff + Math.sin(bx2 * 0.1 + animTime * 10 + s) * 3);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
-        ctx.beginPath();
-        for (let bx = 0; bx < BOSS_X - 20; bx += 12) {
-          ctx.lineTo(bx, beam.y + beam.width / 2 - Math.random() * 4);
-        }
-        ctx.stroke();
       }
     }
 
@@ -890,28 +988,48 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
     // === DRAW PROJECTILES ===
     for (const p of projectiles) {
-      // Green sig bullet
-      const trail = p.life < 1.8 ? 1 : 0.5;
+      // Green sig bullet with glow trail
+      const trail = p.life < 1.8 ? 1 : 0.6;
+      // Trail
+      ctx.fillStyle = `rgba(0, 255, 80, ${trail * 0.3})`;
+      ctx.fillRect(p.x - 12, p.y + 1, 12, 2);
+      ctx.fillStyle = `rgba(0, 200, 60, ${trail * 0.15})`;
+      ctx.fillRect(p.x - 24, p.y + 1.5, 12, 1);
+      // Core bullet
       ctx.fillStyle = `rgba(0, 255, 100, ${trail})`;
-      ctx.fillRect(p.x, p.y, 10, 4);
-      ctx.fillStyle = '#aaffaa';
-      ctx.fillRect(p.x + 6, p.y + 1, 4, 2);
+      ctx.fillRect(p.x, p.y, 12, 4);
+      ctx.fillStyle = '#ccffcc';
+      ctx.fillRect(p.x + 8, p.y + 1, 4, 2);
       // Glow
-      ctx.fillStyle = `rgba(0, 255, 100, 0.2)`;
+      const bulletGlow = ctx.createRadialGradient(p.x + 6, p.y + 2, 0, p.x + 6, p.y + 2, 10);
+      bulletGlow.addColorStop(0, `rgba(0, 255, 100, ${0.4 * trail})`);
+      bulletGlow.addColorStop(1, 'rgba(0, 255, 100, 0)');
+      ctx.fillStyle = bulletGlow;
       ctx.beginPath();
-      ctx.arc(p.x + 5, p.y + 2, 6, 0, Math.PI * 2);
+      ctx.arc(p.x + 6, p.y + 2, 10, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // === DRAW PLAYER (Sonia in jetpack) ===
     drawPlayer(ctx);
 
-    // === PARTICLES ===
+    // === PARTICLES (improved rendering) ===
     for (const p of particles) {
       const alpha = p.life / p.maxLife;
-      ctx.fillStyle = p.color.includes('rgba') ? p.color : p.color;
       ctx.globalAlpha = alpha;
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      ctx.fillStyle = p.color;
+      // Larger particles fade to smaller
+      const size = 2 + alpha * 3;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fill();
+      // Bright core
+      if (alpha > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
 
@@ -928,18 +1046,48 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
     // === GAME OVER ===
     if (gameOver) {
-      ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.7, gameOverTimer * 0.5)})`;
+      const fadeIn = Math.min(1, gameOverTimer * 0.6);
+      ctx.fillStyle = `rgba(0, 0, 0, ${fadeIn * 0.75})`;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      // Static noise overlay
+      ctx.globalAlpha = fadeIn * 0.08;
+      for (let i = 0; i < 200; i++) {
+        const nx = Math.random() * WIDTH;
+        const ny = Math.random() * HEIGHT;
+        const grey = Math.random() * 255;
+        ctx.fillStyle = `rgb(${grey}, ${grey}, ${grey})`;
+        ctx.fillRect(nx, ny, 2 + Math.random() * 3, 1);
+      }
+      ctx.globalAlpha = 1;
+      // Glitch text effect
+      const glitchX = Math.random() < 0.1 ? (Math.random() - 0.5) * 6 : 0;
       ctx.fillStyle = '#ff3333';
       ctx.font = 'bold 36px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('SIGNAL LOST', WIDTH / 2, HEIGHT / 2 - 20);
+      ctx.fillText('SIGNAL LOST', WIDTH / 2 + glitchX, HEIGHT / 2 - 20);
+      // Red chromatic aberration
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+      ctx.fillText('SIGNAL LOST', WIDTH / 2 + glitchX + 2, HEIGHT / 2 - 21);
+      ctx.fillStyle = 'rgba(0, 200, 255, 0.2)';
+      ctx.fillText('SIGNAL LOST', WIDTH / 2 + glitchX - 2, HEIGHT / 2 - 19);
+      // Subtitle
       ctx.fillStyle = '#aaaaaa';
       ctx.font = '14px monospace';
       ctx.fillText('The static overwhelmed your systems', WIDTH / 2, HEIGHT / 2 + 20);
+      // Scan lines
+      ctx.globalAlpha = fadeIn * 0.04;
+      for (let sy = 0; sy < HEIGHT; sy += 3) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, sy, WIDTH, 1);
+      }
+      ctx.globalAlpha = 1;
       if (gameOverTimer > 1.5) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText('SPACE to retry', WIDTH / 2, HEIGHT / 2 + 60);
+        const blink = Math.sin(animTime * 3) > 0;
+        if (blink) {
+          ctx.fillStyle = '#00ff00';
+          ctx.font = '14px monospace';
+          ctx.fillText('SPACE to retry', WIDTH / 2, HEIGHT / 2 + 60);
+        }
       }
       ctx.textAlign = 'left';
     }
@@ -948,6 +1096,19 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     if (showingCredits) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Floating particles (freed sound waves)
+      ctx.globalAlpha = 0.3;
+      for (let i = 0; i < 30; i++) {
+        const px = (i * 53 + animTime * 20 * (1 + (i % 3) * 0.3)) % WIDTH;
+        const py = HEIGHT - ((animTime * 30 + i * 40) % (HEIGHT + 50));
+        const hue = 100 + (i * 17) % 80;
+        ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5 + (i % 3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
 
       // Harmonic Resonance Core visual
       const coreX = WIDTH / 2;
@@ -1001,320 +1162,607 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       }
       ctx.textAlign = 'left';
     }
+
+    // Phase transition flash overlay
+    if (phaseFlash > 0) {
+      ctx.fillStyle = `rgba(255, 100, 200, ${phaseFlash * 0.3})`;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // Restore screen shake transform
+    ctx.restore();
   };
 
   const drawBoss = (ctx: CanvasRenderingContext2D) => {
     if (bossPhase === 'dead') return;
 
     const bx = BOSS_X;
-    const shake = bossPhase === 'dying' ? (Math.random() - 0.5) * 8 : 0;
+    const shake = bossPhase === 'dying' ? (Math.random() - 0.5) * 10 : 0;
 
     ctx.save();
     ctx.translate(shake, shake * 0.5);
 
-    // === ENERGY AURA around mech ===
+    // === MASSIVE ENERGY AURA ===
     if (bossPhase === 'fight') {
-      const auraAlpha = 0.08 + Math.sin(animTime * 3) * 0.04;
-      const auraGrad = ctx.createRadialGradient(bx + 90, 280, 50, bx + 90, 280, 250);
-      auraGrad.addColorStop(0, `rgba(255, 0, 80, ${auraAlpha})`);
-      auraGrad.addColorStop(0.5, `rgba(150, 0, 100, ${auraAlpha * 0.5})`);
+      const auraAlpha = 0.1 + Math.sin(animTime * 2) * 0.04;
+      const auraGrad = ctx.createRadialGradient(bx + 90, 300, 30, bx + 90, 300, 300);
+      auraGrad.addColorStop(0, `rgba(255, 20, 60, ${auraAlpha * 1.5})`);
+      auraGrad.addColorStop(0.3, `rgba(180, 0, 80, ${auraAlpha})`);
+      auraGrad.addColorStop(0.7, `rgba(80, 0, 60, ${auraAlpha * 0.4})`);
       auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = auraGrad;
-      ctx.fillRect(bx - 80, 50, 360, 480);
+      ctx.fillRect(bx - 120, 20, 420, 530);
     }
 
-    // === MECH BODY (giant, imposing) ===
-    // Legs/base with hydraulics
+    // === LEGS (massive, armoured, with thrusters) ===
+    // Left leg
+    const legGrad1 = ctx.createLinearGradient(bx + 15, 0, bx + 65, 0);
+    legGrad1.addColorStop(0, '#0d0d1a');
+    legGrad1.addColorStop(0.3, '#2a2a4a');
+    legGrad1.addColorStop(0.7, '#1a1a3a');
+    legGrad1.addColorStop(1, '#0d0d1a');
+    ctx.fillStyle = legGrad1;
+    ctx.fillRect(bx + 15, HEIGHT - 140, 50, 140);
+    // Right leg
+    ctx.fillRect(bx + 95, HEIGHT - 140, 50, 140);
+
+    // Leg armour panels (beveled)
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(bx + 18, HEIGHT - 130, 44, 25);
+    ctx.fillRect(bx + 98, HEIGHT - 130, 44, 25);
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fillRect(bx + 20, HEIGHT - 128, 40, 5); // highlight edge
+    ctx.fillRect(bx + 100, HEIGHT - 128, 40, 5);
+
+    // Hydraulic pistons (chrome)
+    const pistonShine = 0.6 + Math.sin(animTime * 3) * 0.2;
+    ctx.fillStyle = `rgba(140, 140, 180, ${pistonShine})`;
+    ctx.fillRect(bx + 28, HEIGHT - 100, 6, 55);
+    ctx.fillRect(bx + 46, HEIGHT - 100, 6, 55);
+    ctx.fillRect(bx + 108, HEIGHT - 100, 6, 55);
+    ctx.fillRect(bx + 126, HEIGHT - 100, 6, 55);
+    // Piston caps
+    ctx.fillStyle = '#5a5a8a';
+    ctx.fillRect(bx + 26, HEIGHT - 102, 10, 6);
+    ctx.fillRect(bx + 44, HEIGHT - 102, 10, 6);
+    ctx.fillRect(bx + 106, HEIGHT - 102, 10, 6);
+    ctx.fillRect(bx + 124, HEIGHT - 102, 10, 6);
+
+    // Knee joints (large, glowing)
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(bx + 20, HEIGHT - 120, 40, 120);
-    ctx.fillRect(bx + 100, HEIGHT - 120, 40, 120);
-    // Hydraulic pistons
-    ctx.fillStyle = '#3a3a5a';
-    ctx.fillRect(bx + 30, HEIGHT - 100, 8, 60);
-    ctx.fillRect(bx + 110, HEIGHT - 100, 8, 60);
-    ctx.fillStyle = '#5a5a7a';
-    ctx.fillRect(bx + 32, HEIGHT - 80, 4, 30);
-    ctx.fillRect(bx + 112, HEIGHT - 80, 4, 30);
-    // Armour plates on legs
-    ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx + 22, HEIGHT - 110, 36, 20);
-    ctx.fillRect(bx + 102, HEIGHT - 110, 36, 20);
-    // Knee joints (glowing)
-    ctx.fillStyle = `rgba(255, 50, 80, ${0.4 + Math.sin(animTime * 5) * 0.2})`;
     ctx.beginPath();
-    ctx.arc(bx + 40, HEIGHT - 90, 5, 0, Math.PI * 2);
+    ctx.arc(bx + 40, HEIGHT - 135, 12, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(bx + 120, HEIGHT - 90, 5, 0, Math.PI * 2);
+    ctx.arc(bx + 120, HEIGHT - 135, 12, 0, Math.PI * 2);
     ctx.fill();
-    // Foot anchors
-    ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(bx + 12, HEIGHT - 8, 56, 8);
-    ctx.fillRect(bx + 92, HEIGHT - 8, 56, 8);
+    const kneeGlow = 0.5 + Math.sin(animTime * 5) * 0.3;
+    ctx.fillStyle = `rgba(255, 40, 80, ${kneeGlow})`;
+    ctx.beginPath();
+    ctx.arc(bx + 40, HEIGHT - 135, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx + 120, HEIGHT - 135, 6, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Torso (massive, layered armour)
-    const torsoGrad = ctx.createLinearGradient(bx, 150, bx + 180, 400);
-    torsoGrad.addColorStop(0, '#1a1a3a');
-    torsoGrad.addColorStop(0.3, '#2a2a5a');
-    torsoGrad.addColorStop(0.7, '#222244');
-    torsoGrad.addColorStop(1, '#1a1a3a');
+    // Feet (heavy, anchored)
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(bx + 5, HEIGHT - 12, 70, 12);
+    ctx.fillRect(bx + 85, HEIGHT - 12, 70, 12);
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(bx + 8, HEIGHT - 14, 64, 6);
+    ctx.fillRect(bx + 88, HEIGHT - 14, 64, 6);
+    // Foot thrusters (ground glow)
+    const thrustGlow = 0.3 + Math.sin(animTime * 6) * 0.15;
+    const thrustGrad = ctx.createRadialGradient(bx + 40, HEIGHT, 0, bx + 40, HEIGHT, 25);
+    thrustGrad.addColorStop(0, `rgba(255, 100, 50, ${thrustGlow})`);
+    thrustGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+    ctx.fillStyle = thrustGrad;
+    ctx.fillRect(bx + 15, HEIGHT - 8, 50, 16);
+    const thrustGrad2 = ctx.createRadialGradient(bx + 120, HEIGHT, 0, bx + 120, HEIGHT, 25);
+    thrustGrad2.addColorStop(0, `rgba(255, 100, 50, ${thrustGlow})`);
+    thrustGrad2.addColorStop(1, 'rgba(255, 50, 0, 0)');
+    ctx.fillStyle = thrustGrad2;
+    ctx.fillRect(bx + 95, HEIGHT - 8, 50, 16);
+
+    // === TORSO (massive, heavily armoured) ===
+    // Main torso shape - tapered trapezoid
+    const torsoTop = 160;
+    const torsoBot = 420;
+    const torsoGrad = ctx.createLinearGradient(bx - 10, torsoTop, bx + 190, torsoBot);
+    torsoGrad.addColorStop(0, '#10101a');
+    torsoGrad.addColorStop(0.15, '#1a1a3a');
+    torsoGrad.addColorStop(0.4, '#2a2a5a');
+    torsoGrad.addColorStop(0.6, '#252550');
+    torsoGrad.addColorStop(0.85, '#1a1a3a');
+    torsoGrad.addColorStop(1, '#10101a');
     ctx.fillStyle = torsoGrad;
-    ctx.fillRect(bx, 180, 180, 240);
-
-    // Armour plating with rivets
-    ctx.strokeStyle = '#4a4a8a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(bx + 10, 200, 160, 60);
-    ctx.strokeRect(bx + 10, 270, 160, 60);
-    ctx.strokeRect(bx + 10, 340, 160, 60);
-    // Rivets
-    ctx.fillStyle = '#6a6a9a';
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 2; col++) {
-        ctx.beginPath();
-        ctx.arc(bx + 16 + col * 150, 210 + row * 70, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    // Central power core (on torso)
-    const corePulse = 0.5 + Math.sin(animTime * 4) * 0.3;
-    const coreGrad = ctx.createRadialGradient(bx + 90, 300, 0, bx + 90, 300, 25);
-    coreGrad.addColorStop(0, `rgba(255, 50, 100, ${corePulse})`);
-    coreGrad.addColorStop(0.5, `rgba(200, 0, 60, ${corePulse * 0.6})`);
-    coreGrad.addColorStop(1, 'rgba(100, 0, 30, 0)');
-    ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(bx + 90, 300, 25, 0, Math.PI * 2);
+    ctx.moveTo(bx + 5, torsoTop + 30);
+    ctx.lineTo(bx + 175, torsoTop + 30);
+    ctx.lineTo(bx + 185, torsoBot);
+    ctx.lineTo(bx - 5, torsoBot);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = `rgba(255, 100, 150, ${corePulse})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(bx + 90, 300, 18, 0, Math.PI * 2);
-    ctx.stroke();
 
-    // Static energy vents (pulsing brighter)
-    const ventPulse = 0.4 + Math.sin(animTime * 4) * 0.3;
-    ctx.fillStyle = `rgba(255, 0, 80, ${ventPulse})`;
-    ctx.fillRect(bx + 15, 210, 30, 8);
-    ctx.fillRect(bx + 135, 210, 30, 8);
-    ctx.fillRect(bx + 15, 280, 30, 8);
-    ctx.fillRect(bx + 135, 280, 30, 8);
-    // Vent glow
-    ctx.fillStyle = `rgba(255, 100, 100, ${ventPulse * 0.3})`;
-    ctx.fillRect(bx + 10, 208, 40, 12);
-    ctx.fillRect(bx + 130, 208, 40, 12);
-
-    // Power conduits (connecting core to arms)
-    ctx.strokeStyle = `rgba(255, 50, 80, ${0.3 + Math.sin(animTime * 6) * 0.15})`;
+    // Torso edge highlight (3D bevel)
+    ctx.strokeStyle = 'rgba(100, 100, 160, 0.4)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(bx + 65, 300);
-    ctx.quadraticCurveTo(bx + 20, 280, bx - 10, 227);
+    ctx.moveTo(bx + 5, torsoTop + 30);
+    ctx.lineTo(bx + 175, torsoTop + 30);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(40, 40, 80, 0.6)';
+    ctx.beginPath();
+    ctx.moveTo(bx + 185, torsoBot);
+    ctx.lineTo(bx - 5, torsoBot);
+    ctx.stroke();
+
+    // Chest plate (upper section, recessed)
+    ctx.fillStyle = '#151530';
+    ctx.fillRect(bx + 20, torsoTop + 45, 140, 80);
+    ctx.strokeStyle = '#3a3a6a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 20, torsoTop + 45, 140, 80);
+    // Chest detail lines (hex-panel look)
+    ctx.strokeStyle = 'rgba(80, 80, 140, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx + 90, torsoTop + 45);
+    ctx.lineTo(bx + 90, torsoTop + 125);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(bx + 115, 300);
-    ctx.quadraticCurveTo(bx + 160, 280, bx + 190, 227);
+    ctx.moveTo(bx + 20, torsoTop + 85);
+    ctx.lineTo(bx + 160, torsoTop + 85);
     ctx.stroke();
 
-    // Arms (beam emitters, more detailed)
-    // Left arm
-    ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx - 40, 218, 45, 18);
-    ctx.fillStyle = '#3a3a5a';
-    ctx.fillRect(bx - 35, 220, 35, 14);
-    ctx.fillStyle = '#ff3344';
-    ctx.fillRect(bx - 42, 223, 10, 8); // emitter tip
-    ctx.fillStyle = `rgba(255, 100, 50, ${0.5 + Math.sin(animTime * 7) * 0.3})`;
-    ctx.fillRect(bx - 42, 225, 10, 4); // emitter glow
-    // Right arm
-    ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx + 175, 218, 45, 18);
-    ctx.fillStyle = '#3a3a5a';
-    ctx.fillRect(bx + 180, 220, 35, 14);
-    ctx.fillStyle = '#ff3344';
-    ctx.fillRect(bx + 212, 223, 10, 8);
-    ctx.fillStyle = `rgba(255, 100, 50, ${0.5 + Math.sin(animTime * 7 + 1) * 0.3})`;
-    ctx.fillRect(bx + 212, 225, 10, 4);
+    // === MASSIVE POWER CORE (center of torso) ===
+    const coreY = 310;
+    const corePulse = 0.6 + Math.sin(animTime * 3) * 0.3;
+    // Outer housing
+    ctx.fillStyle = '#0a0a1a';
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a3a6a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 38, 0, Math.PI * 2);
+    ctx.stroke();
+    // Spinning ring
+    ctx.strokeStyle = `rgba(255, 80, 150, ${corePulse * 0.7})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 32, animTime * 2, animTime * 2 + Math.PI * 1.2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 32, animTime * 2 + Math.PI, animTime * 2 + Math.PI * 2.2);
+    ctx.stroke();
+    // Inner core (bright!)
+    const innerCoreGrad = ctx.createRadialGradient(bx + 90, coreY, 0, bx + 90, coreY, 25);
+    innerCoreGrad.addColorStop(0, `rgba(255, 220, 255, ${corePulse})`);
+    innerCoreGrad.addColorStop(0.3, `rgba(255, 50, 120, ${corePulse * 0.9})`);
+    innerCoreGrad.addColorStop(0.6, `rgba(200, 0, 80, ${corePulse * 0.6})`);
+    innerCoreGrad.addColorStop(1, 'rgba(100, 0, 40, 0)');
+    ctx.fillStyle = innerCoreGrad;
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 25, 0, Math.PI * 2);
+    ctx.fill();
+    // Core center pip
+    ctx.fillStyle = `rgba(255, 255, 255, ${corePulse})`;
+    ctx.beginPath();
+    ctx.arc(bx + 90, coreY, 5, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Shoulder pauldrons (larger, with spikes)
+    // Energy conduits from core (to arms, head, legs)
+    const conduitAlpha = 0.4 + Math.sin(animTime * 5) * 0.2;
+    ctx.strokeStyle = `rgba(255, 60, 100, ${conduitAlpha})`;
+    ctx.lineWidth = 2.5;
+    // To left arm
+    ctx.beginPath();
+    ctx.moveTo(bx + 55, coreY);
+    ctx.quadraticCurveTo(bx + 10, coreY - 30, bx - 20, 240);
+    ctx.stroke();
+    // To right arm
+    ctx.beginPath();
+    ctx.moveTo(bx + 125, coreY);
+    ctx.quadraticCurveTo(bx + 170, coreY - 30, bx + 200, 240);
+    ctx.stroke();
+    // To head
+    ctx.beginPath();
+    ctx.moveTo(bx + 90, coreY - 38);
+    ctx.lineTo(bx + 90, torsoTop + 35);
+    ctx.stroke();
+    // To legs
+    ctx.strokeStyle = `rgba(255, 60, 100, ${conduitAlpha * 0.6})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + 70, coreY + 38);
+    ctx.lineTo(bx + 40, torsoBot + 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx + 110, coreY + 38);
+    ctx.lineTo(bx + 120, torsoBot + 10);
+    ctx.stroke();
+
+    // Animated energy pulses along conduits
+    const pulsePos = (animTime * 2) % 1;
+    ctx.fillStyle = `rgba(255, 200, 255, ${0.6})`;
+    ctx.beginPath();
+    ctx.arc(bx + 55 - pulsePos * 75, coreY - pulsePos * 30 - (1 - pulsePos) * 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx + 125 + pulsePos * 75, coreY - pulsePos * 30 - (1 - pulsePos) * 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Belly plate (below core)
+    ctx.fillStyle = '#151530';
+    ctx.fillRect(bx + 25, coreY + 45, 130, 65);
+    ctx.strokeStyle = '#3a3a6a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx + 25, coreY + 45, 130, 65);
+    // Vent slats on belly
+    ctx.fillStyle = `rgba(255, 40, 60, ${0.25 + Math.sin(animTime * 4) * 0.15})`;
+    for (let v = 0; v < 5; v++) {
+      ctx.fillRect(bx + 35, coreY + 52 + v * 12, 110, 4);
+    }
+
+    // === ARMS (massive beam cannons) ===
+    // Left arm
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(bx - 55, 215, 65, 30);
+    // Arm armour
+    const armGradL = ctx.createLinearGradient(bx - 55, 215, bx - 55, 245);
+    armGradL.addColorStop(0, '#3a3a5a');
+    armGradL.addColorStop(0.5, '#2a2a4a');
+    armGradL.addColorStop(1, '#1a1a3a');
+    ctx.fillStyle = armGradL;
+    ctx.fillRect(bx - 50, 218, 55, 24);
+    // Cannon barrel
+    ctx.fillStyle = '#222240';
+    ctx.fillRect(bx - 70, 224, 20, 12);
+    ctx.fillStyle = '#1a1a30';
+    ctx.fillRect(bx - 75, 226, 8, 8);
+    // Emitter glow
+    const emitGlow = 0.5 + Math.sin(animTime * 7) * 0.3;
+    ctx.fillStyle = `rgba(255, 60, 30, ${emitGlow})`;
+    ctx.beginPath();
+    ctx.arc(bx - 75, 230, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 150, 50, ${emitGlow * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(bx - 75, 230, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right arm
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(bx + 170, 215, 65, 30);
+    const armGradR = ctx.createLinearGradient(bx + 170, 215, bx + 170, 245);
+    armGradR.addColorStop(0, '#3a3a5a');
+    armGradR.addColorStop(0.5, '#2a2a4a');
+    armGradR.addColorStop(1, '#1a1a3a');
+    ctx.fillStyle = armGradR;
+    ctx.fillRect(bx + 175, 218, 55, 24);
+    // Cannon barrel
+    ctx.fillStyle = '#222240';
+    ctx.fillRect(bx + 230, 224, 20, 12);
+    ctx.fillStyle = '#1a1a30';
+    ctx.fillRect(bx + 247, 226, 8, 8);
+    // Emitter glow
+    ctx.fillStyle = `rgba(255, 60, 30, ${emitGlow})`;
+    ctx.beginPath();
+    ctx.arc(bx + 255, 230, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 150, 50, ${emitGlow * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(bx + 255, 230, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === SHOULDER PAULDRONS (massive, layered) ===
+    // Left shoulder
+    ctx.fillStyle = '#2a2a4a';
+    ctx.beginPath();
+    ctx.ellipse(bx + 5, torsoTop + 50, 35, 22, -0.2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#3a3a6a';
     ctx.beginPath();
-    ctx.arc(bx + 10, 195, 28, Math.PI, 0);
+    ctx.ellipse(bx + 5, torsoTop + 48, 28, 16, -0.2, 0, Math.PI * 2);
     ctx.fill();
+    // Shoulder orb
+    const orbPulse = 0.4 + Math.sin(animTime * 4 + 1) * 0.3;
+    ctx.fillStyle = `rgba(200, 50, 150, ${orbPulse})`;
     ctx.beginPath();
-    ctx.arc(bx + 170, 195, 28, Math.PI, 0);
+    ctx.arc(bx + 5, torsoTop + 48, 8, 0, Math.PI * 2);
     ctx.fill();
-    // Spikes on shoulders
-    ctx.fillStyle = '#5a5a8a';
+    ctx.fillStyle = `rgba(255, 150, 220, ${orbPulse * 0.6})`;
     ctx.beginPath();
-    ctx.moveTo(bx - 5, 195);
-    ctx.lineTo(bx - 15, 175);
-    ctx.lineTo(bx + 5, 195);
+    ctx.arc(bx + 5, torsoTop + 46, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Spike
+    ctx.fillStyle = '#4a4a8a';
+    ctx.beginPath();
+    ctx.moveTo(bx - 10, torsoTop + 45);
+    ctx.lineTo(bx - 25, torsoTop + 20);
+    ctx.lineTo(bx, torsoTop + 40);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(bx + 175, 195);
-    ctx.lineTo(bx + 195, 175);
-    ctx.lineTo(bx + 185, 195);
+    ctx.moveTo(bx - 5, torsoTop + 35);
+    ctx.lineTo(bx - 15, torsoTop + 5);
+    ctx.lineTo(bx + 5, torsoTop + 32);
     ctx.closePath();
     ctx.fill();
 
-    // === COCKPIT / HEAD ===
-    const headY = bossHeadY;
-    const headFlash = bossHitFlash > 0 ? '#ffffff' : '#3a1a4a';
-
-    // Neck connection (armoured)
+    // Right shoulder
     ctx.fillStyle = '#2a2a4a';
-    ctx.fillRect(bx + 55, 180, 70, headY - 160);
-    ctx.strokeStyle = '#4a4a6a';
+    ctx.beginPath();
+    ctx.ellipse(bx + 175, torsoTop + 50, 35, 22, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a3a6a';
+    ctx.beginPath();
+    ctx.ellipse(bx + 175, torsoTop + 48, 28, 16, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Shoulder orb
+    ctx.fillStyle = `rgba(200, 50, 150, ${orbPulse})`;
+    ctx.beginPath();
+    ctx.arc(bx + 175, torsoTop + 48, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 150, 220, ${orbPulse * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(bx + 175, torsoTop + 46, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Spike
+    ctx.fillStyle = '#4a4a8a';
+    ctx.beginPath();
+    ctx.moveTo(bx + 190, torsoTop + 45);
+    ctx.lineTo(bx + 205, torsoTop + 20);
+    ctx.lineTo(bx + 180, torsoTop + 40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx + 185, torsoTop + 35);
+    ctx.lineTo(bx + 195, torsoTop + 5);
+    ctx.lineTo(bx + 175, torsoTop + 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // === NECK (armoured, segmented) ===
+    const headY = bossHeadY;
+    const neckTop = Math.min(headY + BOSS_HEAD_RADIUS + 5, torsoTop + 30);
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(bx + 60, neckTop, 60, torsoTop + 30 - neckTop + 10);
+    // Neck segments
+    ctx.strokeStyle = '#3a3a5a';
     ctx.lineWidth = 1;
-    for (let ny = 185; ny < headY - 10; ny += 12) {
+    for (let ny = neckTop + 5; ny < torsoTop + 35; ny += 8) {
       ctx.beginPath();
-      ctx.moveTo(bx + 58, ny);
-      ctx.lineTo(bx + 122, ny);
+      ctx.moveTo(bx + 62, ny);
+      ctx.lineTo(bx + 118, ny);
       ctx.stroke();
     }
+    // Neck energy line
+    ctx.strokeStyle = `rgba(255, 60, 100, ${conduitAlpha * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + 90, neckTop);
+    ctx.lineTo(bx + 90, torsoTop + 35);
+    ctx.stroke();
 
-    // Head glow (danger zone indicator)
+    // === COCKPIT / HEAD (Count Crosstalk's command pod) ===
+    const headFlash = bossHitFlash > 0;
+
+    // Head danger glow
     if (bossPhase === 'fight') {
-      const headGlowR = BOSS_HEAD_RADIUS + 12 + Math.sin(animTime * 3) * 4;
-      const headGlow = ctx.createRadialGradient(bx + 60, headY, BOSS_HEAD_RADIUS, bx + 60, headY, headGlowR);
-      headGlow.addColorStop(0, 'rgba(255, 0, 60, 0)');
-      headGlow.addColorStop(1, `rgba(255, 0, 60, ${0.1 + Math.sin(animTime * 5) * 0.05})`);
-      ctx.fillStyle = headGlow;
+      const headGlowR = BOSS_HEAD_RADIUS + 18 + Math.sin(animTime * 3) * 5;
+      const headGlowGrad = ctx.createRadialGradient(bx + 90, headY, BOSS_HEAD_RADIUS, bx + 90, headY, headGlowR);
+      headGlowGrad.addColorStop(0, 'rgba(255, 0, 60, 0)');
+      headGlowGrad.addColorStop(0.5, `rgba(255, 0, 60, ${0.08 + Math.sin(animTime * 4) * 0.04})`);
+      headGlowGrad.addColorStop(1, 'rgba(255, 0, 60, 0)');
+      ctx.fillStyle = headGlowGrad;
       ctx.beginPath();
-      ctx.arc(bx + 60, headY, headGlowR, 0, Math.PI * 2);
+      ctx.arc(bx + 90, headY, headGlowR, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Head (cockpit with Count Crosstalk inside)
-    ctx.fillStyle = headFlash;
+    // Outer head shell
+    ctx.fillStyle = headFlash ? '#ffffff' : '#1a1030';
     ctx.beginPath();
-    ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
+    ctx.arc(bx + 90, headY, BOSS_HEAD_RADIUS + 8, 0, Math.PI * 2);
     ctx.fill();
-
-    // Head armour ring
-    ctx.strokeStyle = bossHitFlash > 0 ? '#ffff00' : '#6a3a8a';
-    ctx.lineWidth = 3;
+    // Armour ring
+    ctx.strokeStyle = headFlash ? '#ffff00' : '#5a3a7a';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
+    ctx.arc(bx + 90, headY, BOSS_HEAD_RADIUS + 8, 0, Math.PI * 2);
     ctx.stroke();
-    // Secondary armour ring
-    ctx.strokeStyle = bossHitFlash > 0 ? '#ffcc00' : '#4a2a6a';
+    // Inner shell
+    ctx.fillStyle = headFlash ? '#ffffaa' : '#2a1a3a';
+    ctx.beginPath();
+    ctx.arc(bx + 90, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = headFlash ? '#ffcc00' : '#6a4a8a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(bx + 90, headY, BOSS_HEAD_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Visor (cockpit glass — wide, angular)
+    const visorGrad = ctx.createLinearGradient(bx + 68, headY - 12, bx + 112, headY + 12);
+    if (headFlash) {
+      visorGrad.addColorStop(0, 'rgba(255, 255, 100, 0.9)');
+      visorGrad.addColorStop(1, 'rgba(255, 200, 0, 0.8)');
+    } else {
+      visorGrad.addColorStop(0, 'rgba(180, 0, 40, 0.7)');
+      visorGrad.addColorStop(0.5, 'rgba(255, 20, 60, 0.8)');
+      visorGrad.addColorStop(1, 'rgba(120, 0, 30, 0.6)');
+    }
+    ctx.fillStyle = visorGrad;
+    ctx.beginPath();
+    ctx.ellipse(bx + 90, headY, 26, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Visor edge
+    ctx.strokeStyle = headFlash ? '#ffffff' : '#8a4a6a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(bx + 60, headY, BOSS_HEAD_RADIUS + 5, 0, Math.PI * 2);
+    ctx.ellipse(bx + 90, headY, 26, 16, 0, 0, Math.PI * 2);
     ctx.stroke();
-
-    // Visor / cockpit glass
-    ctx.fillStyle = bossHitFlash > 0 ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 0, 60, 0.6)';
+    // Visor reflection (shine)
+    ctx.fillStyle = 'rgba(255, 200, 220, 0.2)';
     ctx.beginPath();
-    ctx.ellipse(bx + 60, headY, 22, 15, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Visor reflection
-    ctx.fillStyle = 'rgba(255, 200, 200, 0.15)';
-    ctx.beginPath();
-    ctx.ellipse(bx + 55, headY - 4, 8, 4, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(bx + 82, headY - 6, 10, 4, -0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Count Crosstalk's face behind visor (evil eyes with pupils)
-    const eyeGlow = 0.7 + Math.sin(animTime * 6) * 0.3;
+    // Count Crosstalk's EYES (menacing, glowing)
+    const eyeGlow = 0.8 + Math.sin(animTime * 6) * 0.2;
+    // Eye sockets
+    ctx.fillStyle = '#1a0000';
+    ctx.beginPath();
+    ctx.ellipse(bx + 80, headY - 2, 8, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(bx + 100, headY - 2, 8, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Iris glow
     ctx.fillStyle = `rgba(255, 0, 0, ${eyeGlow})`;
     ctx.beginPath();
-    ctx.arc(bx + 52, headY - 3, 5, 0, Math.PI * 2);
+    ctx.ellipse(bx + 80, headY - 2, 6, 5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(bx + 68, headY - 3, 5, 0, Math.PI * 2);
+    ctx.ellipse(bx + 100, headY - 2, 6, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Yellow slit pupils
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillRect(bx + 51, headY - 5, 2, 5);
-    ctx.fillRect(bx + 67, headY - 5, 2, 5);
-    // Angry brow
-    ctx.strokeStyle = '#880000';
-    ctx.lineWidth = 2.5;
+    // Bright center
+    ctx.fillStyle = `rgba(255, 200, 0, ${eyeGlow})`;
     ctx.beginPath();
-    ctx.moveTo(bx + 45, headY - 11);
-    ctx.lineTo(bx + 55, headY - 7);
-    ctx.stroke();
+    ctx.ellipse(bx + 80, headY - 2, 2.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(bx + 75, headY - 11);
-    ctx.lineTo(bx + 65, headY - 7);
-    ctx.stroke();
+    ctx.ellipse(bx + 100, headY - 2, 2.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye glow bleed
+    ctx.fillStyle = `rgba(255, 0, 0, ${eyeGlow * 0.2})`;
+    ctx.beginPath();
+    ctx.ellipse(bx + 80, headY - 2, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(bx + 100, headY - 2, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Crown/horns (larger, more menacing)
-    ctx.fillStyle = '#ff3344';
+    // Angry brow plates
+    ctx.fillStyle = '#3a1a2a';
     ctx.beginPath();
-    ctx.moveTo(bx + 38, headY - BOSS_HEAD_RADIUS + 2);
-    ctx.lineTo(bx + 43, headY - BOSS_HEAD_RADIUS - 20);
-    ctx.lineTo(bx + 48, headY - BOSS_HEAD_RADIUS + 2);
+    ctx.moveTo(bx + 70, headY - 12);
+    ctx.lineTo(bx + 82, headY - 8);
+    ctx.lineTo(bx + 82, headY - 10);
+    ctx.lineTo(bx + 70, headY - 15);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(bx + 72, headY - BOSS_HEAD_RADIUS + 2);
-    ctx.lineTo(bx + 77, headY - BOSS_HEAD_RADIUS - 20);
-    ctx.lineTo(bx + 82, headY - BOSS_HEAD_RADIUS + 2);
-    ctx.closePath();
-    ctx.fill();
-    // Center horn (smaller)
-    ctx.beginPath();
-    ctx.moveTo(bx + 55, headY - BOSS_HEAD_RADIUS + 4);
-    ctx.lineTo(bx + 60, headY - BOSS_HEAD_RADIUS - 12);
-    ctx.lineTo(bx + 65, headY - BOSS_HEAD_RADIUS + 4);
+    ctx.moveTo(bx + 110, headY - 12);
+    ctx.lineTo(bx + 98, headY - 8);
+    ctx.lineTo(bx + 98, headY - 10);
+    ctx.lineTo(bx + 110, headY - 15);
     ctx.closePath();
     ctx.fill();
 
-    // HP bar above boss (more dramatic)
-    const hpBarW = 160;
-    const hpBarH = 12;
-    const hpBarX = bx + 10;
-    const hpBarY = 38;
-    // Bar background with glow
+    // Crown / horns (dramatic, multi-layered)
+    const hornBase = headY - BOSS_HEAD_RADIUS - 6;
+    // Left horn
+    ctx.fillStyle = '#cc2244';
+    ctx.beginPath();
+    ctx.moveTo(bx + 68, hornBase + 4);
+    ctx.lineTo(bx + 60, hornBase - 30);
+    ctx.lineTo(bx + 56, hornBase - 28);
+    ctx.lineTo(bx + 62, hornBase + 6);
+    ctx.closePath();
+    ctx.fill();
+    // Right horn
+    ctx.beginPath();
+    ctx.moveTo(bx + 112, hornBase + 4);
+    ctx.lineTo(bx + 120, hornBase - 30);
+    ctx.lineTo(bx + 124, hornBase - 28);
+    ctx.lineTo(bx + 118, hornBase + 6);
+    ctx.closePath();
+    ctx.fill();
+    // Center horn (tallest)
+    ctx.fillStyle = '#ff3355';
+    ctx.beginPath();
+    ctx.moveTo(bx + 85, hornBase + 2);
+    ctx.lineTo(bx + 90, hornBase - 38);
+    ctx.lineTo(bx + 95, hornBase + 2);
+    ctx.closePath();
+    ctx.fill();
+    // Horn tips glow
+    ctx.fillStyle = `rgba(255, 100, 100, ${0.5 + Math.sin(animTime * 5) * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(bx + 60, hornBase - 30, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx + 120, hornBase - 30, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx + 90, hornBase - 38, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === HP BAR (dramatic, above boss) ===
+    const hpBarW = 170;
+    const hpBarH = 14;
+    const hpBarX = bx + 5;
+    const hpBarY = 30;
+    // Background
+    ctx.fillStyle = '#0a0a15';
+    ctx.fillRect(hpBarX - 3, hpBarY - 3, hpBarW + 6, hpBarH + 6);
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(hpBarX - 2, hpBarY - 2, hpBarW + 4, hpBarH + 4);
-    ctx.fillStyle = '#333';
     ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
+    // HP fill
     const hpRatio = Math.max(0, bossHP / BOSS_MAX_HP);
-    const hpColor = hpRatio > 0.5 ? '#ff3344' : hpRatio > 0.25 ? '#ff8800' : '#ffcc00';
+    const hpColor = hpRatio > 0.5 ? '#ff2244' : hpRatio > 0.25 ? '#ff8800' : '#ffcc00';
     ctx.fillStyle = hpColor;
-    ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
-    // HP bar shimmer
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + Math.sin(animTime * 6) * 0.05})`;
-    ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio * 0.5, hpBarH / 2);
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
+    ctx.fillRect(hpBarX + 1, hpBarY + 1, (hpBarW - 2) * hpRatio, hpBarH - 2);
+    // Shimmer on HP
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.15 + Math.sin(animTime * 6) * 0.08})`;
+    ctx.fillRect(hpBarX + 1, hpBarY + 1, (hpBarW - 2) * hpRatio, (hpBarH - 2) / 2);
+    // Border
+    ctx.strokeStyle = '#5a3a6a';
+    ctx.lineWidth = 2;
     ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+    // Name
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 6);
-    // Skull icon next to name
-    ctx.font = '10px monospace';
-    ctx.fillText('☠', hpBarX - 10, hpBarY - 5);
+    ctx.fillText('☠ COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 6);
     ctx.textAlign = 'left';
 
-    // Ambient static arcs around mech (more dramatic)
+    // === AMBIENT EFFECTS ===
     if (bossPhase === 'fight') {
-      // Static crackling lines
-      ctx.strokeStyle = `rgba(255, 0, 80, ${0.2 + Math.sin(animTime * 5) * 0.1})`;
+      // Static electricity arcing across the mech
+      ctx.strokeStyle = `rgba(255, 50, 100, ${0.25 + Math.sin(animTime * 5) * 0.15})`;
       ctx.lineWidth = 1.5;
-      for (let s = 0; s < 8; s++) {
-        const sx2 = bx + Math.random() * 180;
-        const sy2 = 100 + Math.random() * 350;
+      for (let s = 0; s < 6; s++) {
+        const sx2 = bx + 10 + Math.random() * 160;
+        const sy2 = torsoTop + 50 + Math.random() * 200;
         ctx.beginPath();
         ctx.moveTo(sx2, sy2);
-        ctx.lineTo(sx2 + (Math.random() - 0.5) * 30, sy2 + (Math.random() - 0.5) * 30);
-        ctx.lineTo(sx2 + (Math.random() - 0.5) * 20, sy2 + (Math.random() - 0.5) * 40);
+        ctx.lineTo(sx2 + (Math.random() - 0.5) * 25, sy2 + (Math.random() - 0.5) * 25);
+        ctx.lineTo(sx2 + (Math.random() - 0.5) * 20, sy2 + (Math.random() - 0.5) * 35);
         ctx.stroke();
       }
-      // Energy arcs between shoulders
-      if (Math.sin(animTime * 7) > 0.5) {
-        ctx.strokeStyle = 'rgba(255, 100, 200, 0.4)';
-        ctx.lineWidth = 1;
+      // Shoulder energy arc
+      if (Math.sin(animTime * 6) > 0.4) {
+        ctx.strokeStyle = `rgba(200, 100, 255, ${0.35 + Math.sin(animTime * 8) * 0.15})`;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(bx + 10, 185);
-        ctx.quadraticCurveTo(bx + 90, 170 + Math.random() * 20, bx + 170, 185);
+        ctx.moveTo(bx + 5, torsoTop + 48);
+        ctx.quadraticCurveTo(bx + 90, torsoTop + 20 + Math.random() * 20, bx + 175, torsoTop + 48);
         ctx.stroke();
+      }
+      // Exhaust smoke from vents
+      for (let v = 0; v < 3; v++) {
+        const vx = bx + 35 + v * 45;
+        const vy = coreY + 110 - Math.sin(animTime * 2 + v) * 5;
+        ctx.fillStyle = `rgba(60, 20, 40, ${0.2 - v * 0.05})`;
+        ctx.beginPath();
+        ctx.arc(vx + Math.sin(animTime + v) * 5, vy - animTime * 5 % 30, 6 + v * 2, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -1330,28 +1778,46 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // === JETPACK ===
     const jpGrad = ctx.createLinearGradient(x - 7, y + 6, x + 5, y + 6);
     jpGrad.addColorStop(0, '#2a2a4a');
-    jpGrad.addColorStop(0.5, '#4a4a6a');
+    jpGrad.addColorStop(0.5, '#5a5a7a');
     jpGrad.addColorStop(1, '#2a2a4a');
     ctx.fillStyle = jpGrad;
     ctx.beginPath();
     ctx.roundRect(x - 7, y + 6, 12, 30, 3);
     ctx.fill();
+    // Chrome highlight
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fillRect(x - 5, y + 8, 3, 20);
     // Nozzle
     ctx.fillStyle = '#222';
     ctx.beginPath();
     ctx.roundRect(x - 5, y + 36, 8, 5, [0, 0, 2, 2]);
     ctx.fill();
-    // Levitation glow (always on, no thrust needed)
-    const glowH = 6 + Math.sin(animTime * 8) * 2;
-    const glowGrad = ctx.createLinearGradient(x - 1, y + 41, x - 1, y + 41 + glowH);
-    glowGrad.addColorStop(0, 'rgba(0, 200, 255, 0.8)');
-    glowGrad.addColorStop(0.5, 'rgba(0, 100, 255, 0.4)');
-    glowGrad.addColorStop(1, 'rgba(0, 50, 200, 0)');
-    ctx.fillStyle = glowGrad;
+    ctx.fillStyle = '#444';
+    ctx.fillRect(x - 4, y + 36, 6, 1);
+    // Thrust flame (dual-color, animated)
+    const flameH = 8 + Math.sin(animTime * 12) * 3;
+    const flameW = 4 + Math.sin(animTime * 8) * 1;
+    // Outer flame (blue)
+    const outerFlame = ctx.createLinearGradient(x - 1, y + 41, x - 1, y + 41 + flameH);
+    outerFlame.addColorStop(0, 'rgba(0, 150, 255, 0.9)');
+    outerFlame.addColorStop(0.4, 'rgba(0, 80, 255, 0.6)');
+    outerFlame.addColorStop(1, 'rgba(0, 30, 200, 0)');
+    ctx.fillStyle = outerFlame;
     ctx.beginPath();
-    ctx.moveTo(x - 4, y + 41);
-    ctx.lineTo(x - 1, y + 41 + glowH);
-    ctx.lineTo(x + 2, y + 41);
+    ctx.moveTo(x - flameW - 1, y + 41);
+    ctx.lineTo(x - 1, y + 41 + flameH);
+    ctx.lineTo(x + flameW - 1, y + 41);
+    ctx.closePath();
+    ctx.fill();
+    // Inner flame (white-cyan)
+    const innerFlame = ctx.createLinearGradient(x - 1, y + 41, x - 1, y + 41 + flameH * 0.6);
+    innerFlame.addColorStop(0, 'rgba(200, 255, 255, 0.9)');
+    innerFlame.addColorStop(1, 'rgba(0, 200, 255, 0)');
+    ctx.fillStyle = innerFlame;
+    ctx.beginPath();
+    ctx.moveTo(x - 2, y + 41);
+    ctx.lineTo(x - 1, y + 41 + flameH * 0.6);
+    ctx.lineTo(x, y + 41);
     ctx.closePath();
     ctx.fill();
     // Status light
@@ -1460,9 +1926,25 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
     // SIG blaster (arm cannon, right side)
     ctx.fillStyle = '#1a3a1a';
-    ctx.fillRect(x + 30, y + 20, 12, 8);
+    ctx.beginPath();
+    ctx.roundRect(x + 30, y + 19, 14, 10, 2);
+    ctx.fill();
+    ctx.fillStyle = '#2a4a2a';
+    ctx.fillRect(x + 32, y + 20, 10, 8);
+    // Barrel highlight
+    ctx.fillStyle = 'rgba(0, 255, 100, 0.15)';
+    ctx.fillRect(x + 38, y + 20, 4, 8);
+    // Emitter glow
+    const emitPulse = 0.5 + Math.sin(animTime * 10) * 0.3;
+    const emitGlow = ctx.createRadialGradient(x + 44, y + 24, 0, x + 44, y + 24, 6);
+    emitGlow.addColorStop(0, `rgba(0, 255, 100, ${emitPulse * 0.8})`);
+    emitGlow.addColorStop(1, 'rgba(0, 255, 100, 0)');
+    ctx.fillStyle = emitGlow;
+    ctx.beginPath();
+    ctx.arc(x + 44, y + 24, 6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#00ff66';
-    ctx.fillRect(x + 40, y + 22, 4, 4);
+    ctx.fillRect(x + 42, y + 22, 3, 4);
 
     ctx.globalAlpha = 1;
   };
@@ -1503,34 +1985,72 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   };
 
   const drawDialog = (ctx: CanvasRenderingContext2D, dialog: { lines: string[]; speaker: string }, alpha: number) => {
-    ctx.fillStyle = `rgba(0, 0, 0, ${0.85 * alpha})`;
-    ctx.fillRect(60, HEIGHT - 180, WIDTH - 120, 150);
-    ctx.strokeStyle = `rgba(0, 255, 0, ${0.5 * alpha})`;
+    const dx = 60, dy = HEIGHT - 180, dw = WIDTH - 120, dh = 150;
+    ctx.globalAlpha = alpha;
+    // Background with slight gradient
+    const bgGrad = ctx.createLinearGradient(dx, dy, dx, dy + dh);
+    bgGrad.addColorStop(0, 'rgba(5, 5, 20, 0.92)');
+    bgGrad.addColorStop(1, 'rgba(10, 10, 30, 0.88)');
+    ctx.fillStyle = bgGrad;
+    ctx.beginPath();
+    ctx.roundRect(dx, dy, dw, dh, 4);
+    ctx.fill();
+    // Double border
+    const borderColor = dialog.speaker === 'Count Crosstalk' ? `rgba(255, 50, 50, ${0.6})` : `rgba(0, 255, 170, ${0.5})`;
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = 2;
-    ctx.strokeRect(60, HEIGHT - 180, WIDTH - 120, 150);
+    ctx.beginPath();
+    ctx.roundRect(dx, dy, dw, dh, 4);
+    ctx.stroke();
+    ctx.strokeStyle = borderColor.replace(/[\d.]+\)$/, '0.2)');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(dx + 3, dy + 3, dw - 6, dh - 6, 3);
+    ctx.stroke();
+    // Corner accents
+    const cornerSize = 8;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 2;
+    // Top-left
+    ctx.beginPath(); ctx.moveTo(dx, dy + cornerSize); ctx.lineTo(dx, dy); ctx.lineTo(dx + cornerSize, dy); ctx.stroke();
+    // Top-right
+    ctx.beginPath(); ctx.moveTo(dx + dw - cornerSize, dy); ctx.lineTo(dx + dw, dy); ctx.lineTo(dx + dw, dy + cornerSize); ctx.stroke();
+    // Bottom-left
+    ctx.beginPath(); ctx.moveTo(dx, dy + dh - cornerSize); ctx.lineTo(dx, dy + dh); ctx.lineTo(dx + cornerSize, dy + dh); ctx.stroke();
+    // Bottom-right
+    ctx.beginPath(); ctx.moveTo(dx + dw - cornerSize, dy + dh); ctx.lineTo(dx + dw, dy + dh); ctx.lineTo(dx + dw, dy + dh - cornerSize); ctx.stroke();
+    // Scan lines (subtle)
+    ctx.globalAlpha = alpha * 0.03;
+    for (let sy = dy; sy < dy + dh; sy += 3) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(dx, sy, dw, 1);
+    }
+    ctx.globalAlpha = alpha;
 
-    // Speaker name
+    // Speaker indicator bar
     const speakerColor = dialog.speaker === 'Sonia' ? '#00ccaa' :
                          dialog.speaker === 'Count Crosstalk' ? '#ff3344' : '#ffffff';
     ctx.fillStyle = speakerColor;
+    ctx.fillRect(dx + 10, dy + 8, 3, 18);
+    // Speaker name
+    ctx.fillStyle = speakerColor;
     ctx.font = 'bold 14px monospace';
-    ctx.globalAlpha = alpha;
-    ctx.fillText(dialog.speaker, 80, HEIGHT - 155);
+    ctx.fillText(dialog.speaker, dx + 20, dy + 22);
 
     // Lines
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#e0e0e0';
     ctx.font = '13px monospace';
     dialog.lines.forEach((line, i) => {
-      ctx.fillText(line, 80, HEIGHT - 130 + i * 22);
+      ctx.fillText(line, dx + 20, dy + 48 + i * 22);
     });
 
     // Advance hint
     const blink = Math.sin(animTime * 3) > 0;
     if (blink) {
-      ctx.fillStyle = '#666666';
+      ctx.fillStyle = '#555555';
       ctx.font = '11px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText('SPACE ▶', WIDTH - 80, HEIGHT - 40);
+      ctx.fillText('SPACE ▶', dx + dw - 15, dy + dh - 12);
       ctx.textAlign = 'left';
     }
     ctx.globalAlpha = 1;
