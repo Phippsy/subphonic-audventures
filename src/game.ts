@@ -2944,11 +2944,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillStyle = '#ffcc00';
       ctx.fillText('You have a KEY. You have a MISSION.', 110, 240);
       ctx.fillText('Acoustica doesn\'t save itself, you know.', 110, 265);
-      ctx.fillStyle = '#cccccc';
+      ctx.fillStyle = '#ff6666';
       ctx.font = '13px monospace';
-      ctx.fillText('', 110, 290);
-      ctx.fillText('*straightens tie disapprovingly*', 110, 310);
-      ctx.fillText('Off you go. Chop chop.', 110, 335);
+      ctx.fillText('By the way, you have 469 unread documents', 110, 290);
+      ctx.fillText('in Adoptecth. I\'m coming for you.', 110, 310);
+      ctx.fillStyle = '#cccccc';
+      ctx.fillText('', 110, 330);
+      ctx.fillText('*straightens tie disapprovingly*', 110, 350);
+      ctx.fillText('Off you go. Chop chop.', 110, 375);
       // Continue prompt
       ctx.fillStyle = `rgba(0, 255, 0, ${0.5 + Math.sin(animTime * 4) * 0.3})`;
       ctx.font = '11px monospace';
