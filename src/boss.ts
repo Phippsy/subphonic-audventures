@@ -2,7 +2,7 @@
 // Sonia in jetpack (free flight) vs Count Crosstalk in a giant static mech
 // Shoot green sigs at his head to do damage, avoid beams and flying bots
 
-import { initAudio, startBossBGM, stopBossBGM, sfxBossHit, sfxBossBeam, sfxPlayerShoot, sfxBossDefeat, sfxStaticHit, sfxMenuSelect } from './audio';
+import { initAudio, startBossBGM, stopBossBGM, sfxBossHit, sfxBossBeam, sfxPlayerShoot, sfxBossDefeat, sfxStaticHit, sfxMenuSelect, sfxShellDeflect } from './audio';
 
 // === CONSTANTS ===
 const WIDTH = 960;
@@ -514,6 +514,28 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, onQuit
         }
       } else if (bossStage === 'heart') {
         // Phase 2: Hit the heart (moving inside torso)
+        // Check if projectile hits the shielded head (sonic shell — no damage)
+        const headCX2 = BOSS_X + 90;
+        const headCY2 = bossHeadY;
+        const headDist2 = Math.hypot(p.x - headCX2, p.y - headCY2);
+        if (headDist2 < BOSS_HEAD_RADIUS + 4) {
+          p.life = 0;
+          sfxShellDeflect();
+          // Deflection spark particles
+          for (let i = 0; i < 5; i++) {
+            const angle = Math.atan2(p.y - headCY2, p.x - headCX2) + (Math.random() - 0.5) * 1.2;
+            const speed = 100 + Math.random() * 150;
+            particles.push({
+              x: p.x, y: p.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              life: 0.2 + Math.random() * 0.15,
+              maxLife: 0.35,
+              color: '#666666',
+            });
+          }
+          continue;
+        }
         // First check barriers
         let hitBarrier = false;
         for (const bar of barriers) {

@@ -2,7 +2,7 @@
 // Geometry Dash / Flappy Bird inspired auto-scrolling level
 // Player uses thrust to dodge obstacles, collects hats for invincibility
 
-import { initAudio, startRunnerBGM, stopRunnerBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, startThrustLoop, stopThrustLoop } from './audio';
+import { initAudio, startRunnerBGM, stopRunnerBGM, sfxCollectSig, sfxMenuSelect, sfxStaticHit, sfxInvincible, sfxRunnerWin, startThrustLoop, stopThrustLoop, sfxObstacleSmash } from './audio';
 import { addToL2Leaderboard, getL2Leaderboard, type LeaderboardEntry } from './leaderboard';
 
 // === CONSTANTS ===
@@ -399,6 +399,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
           // Destroy obstacle
           score += DESTROY_POINTS;
           destroyedCount++;
+          sfxObstacleSmash();
           // Particles
           for (let p = 0; p < 6; p++) {
             particles.push({

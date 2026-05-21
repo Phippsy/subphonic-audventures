@@ -1133,3 +1133,70 @@ export const sfxBossDefeat = () => {
     });
   }, 800);
 };
+
+export const sfxObstacleSmash = () => {
+  // Satisfying crunch: percussive hit + glass shatter + bass thump
+  const ac = ensureContext();
+  const now = ac.currentTime;
+
+  // Bass thump
+  const bass = ac.createOscillator();
+  const bassGain = ac.createGain();
+  bass.type = 'sine';
+  bass.frequency.setValueAtTime(120, now);
+  bass.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+  bassGain.gain.setValueAtTime(0.06, now);
+  bassGain.gain.linearRampToValueAtTime(0, now + 0.12);
+  bass.connect(bassGain);
+  bassGain.connect(sfxGain!);
+  bass.start(now);
+  bass.stop(now + 0.13);
+
+  // Shatter crunch (noise burst)
+  playNoise(0.08, 0.04, 2500, 'bandpass');
+
+  // Metallic ping
+  const ping = ac.createOscillator();
+  const pingGain = ac.createGain();
+  ping.type = 'square';
+  ping.frequency.setValueAtTime(1200, now);
+  ping.frequency.exponentialRampToValueAtTime(800, now + 0.06);
+  pingGain.gain.setValueAtTime(0.03, now);
+  pingGain.gain.linearRampToValueAtTime(0, now + 0.08);
+  ping.connect(pingGain);
+  pingGain.connect(sfxGain!);
+  ping.start(now);
+  ping.stop(now + 0.09);
+};
+
+export const sfxShellDeflect = () => {
+  // Deflection "no effect" — dull metallic clank + descending buzz
+  const ac = ensureContext();
+  const now = ac.currentTime;
+
+  // Dull metallic clank
+  const clank = ac.createOscillator();
+  const clankGain = ac.createGain();
+  clank.type = 'triangle';
+  clank.frequency.setValueAtTime(400, now);
+  clank.frequency.exponentialRampToValueAtTime(200, now + 0.08);
+  clankGain.gain.setValueAtTime(0.04, now);
+  clankGain.gain.linearRampToValueAtTime(0, now + 0.1);
+  clank.connect(clankGain);
+  clankGain.connect(sfxGain!);
+  clank.start(now);
+  clank.stop(now + 0.1);
+
+  // Dud buzz (signals ineffectiveness)
+  const buzz = ac.createOscillator();
+  const buzzGain = ac.createGain();
+  buzz.type = 'sawtooth';
+  buzz.frequency.setValueAtTime(150, now + 0.02);
+  buzz.frequency.linearRampToValueAtTime(80, now + 0.15);
+  buzzGain.gain.setValueAtTime(0.025, now + 0.02);
+  buzzGain.gain.linearRampToValueAtTime(0, now + 0.15);
+  buzz.connect(buzzGain);
+  buzzGain.connect(sfxGain!);
+  buzz.start(now + 0.02);
+  buzz.stop(now + 0.16);
+};
