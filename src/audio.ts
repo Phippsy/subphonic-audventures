@@ -746,3 +746,215 @@ export const sfxRunnerWin = () => {
 export const initAudio = () => {
   ensureContext();
 };
+
+// === LEVEL 3 BOSS BGM ===
+// Dark, intense, driving boss battle music — minor key with dissonant tension
+
+let bossBGMSource: AudioBufferSourceNode | null = null;
+let bossBGMPlaying = false;
+
+const buildBossBGMBuffer = (): AudioBuffer => {
+  const ac = ensureContext();
+  const bpm = 150;
+  const beatDur = 60 / bpm;
+  const bars = 8;
+  const duration = bars * 4 * beatDur;
+  const sampleRate = ac.sampleRate;
+  const length = Math.ceil(sampleRate * duration);
+  const buffer = ac.createBuffer(2, length, sampleRate);
+
+  // Dark chord progression: Em - C - Dm - Bb (repeating, tension throughout)
+  const chords: number[][] = [
+    [82, 165, 196, 247, 330],   // Em: E2, E3, G3, B3, E4
+    [65, 131, 165, 196, 262],   // C:  C2, C3, E3, G3, C4
+    [73, 147, 175, 220, 294],   // Dm: D2, D3, F3, A3, D4
+    [58, 117, 147, 175, 233],   // Bb: Bb1, Bb2, D3, F3, Bb3
+    [82, 165, 196, 247, 330],   // Em
+    [65, 131, 165, 196, 262],   // C
+    [55, 110, 131, 165, 220],   // Am: A1, A2, C3, E3, A3
+    [62, 123, 147, 196, 247],   // B:  B1, B2, D3, G3, B3 (dominant tension)
+  ];
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const beatPos = t / beatDur;
+      const barIndex = Math.floor(beatPos / 4);
+      const chordIndex = barIndex % 8;
+      const chord = chords[chordIndex];
+      const barBeat = beatPos % 4;
+      const currentBeatInBar = Math.floor(barBeat);
+      const intensity = 0.6 + 0.4 * (barIndex / bars);
+
+      let sample = 0;
+
+      // === HEAVY BASS (distorted pulse) ===
+      const bassFreq = chord[0];
+      const bassPhase = (t * bassFreq) % 1;
+      const bassEnv = Math.max(0, 1 - (barBeat % 1) * 1.5);
+      const bassWave = bassPhase < 0.3 ? 1 : -1; // asymmetric pulse
+      sample += bassWave * bassEnv * 0.09 * intensity;
+      // Sub
+      sample += Math.sin(2 * Math.PI * bassFreq * 0.5 * t) * 0.06 * bassEnv;
+
+      // === DRIVING 8TH NOTE RHYTHM (distorted saw) ===
+      const eighthBeat = (barBeat * 2) % 1;
+      const eighthEnv = eighthBeat < 0.5 ? (1 - eighthBeat * 1.5) : 0;
+      const rhythmFreq = chord[2] * (ch === 0 ? 1 : 1.005);
+      const rhythmPhase = (t * rhythmFreq) % 1;
+      sample += (rhythmPhase * 2 - 1) * eighthEnv * 0.04 * intensity;
+      // Power chord (fifth)
+      const fifthFreq = chord[3] * (ch === 0 ? 1 : 0.997);
+      sample += ((t * fifthFreq) % 1 * 2 - 1) * eighthEnv * 0.025 * intensity;
+
+      // === MENACING ARPEGGIO (16th notes, high register) ===
+      const arpStep = Math.floor(barBeat * 4) % 16;
+      const arpPatterns = [0, 4, 3, 2, 4, 1, 3, 0, 4, 2, 1, 3, 0, 4, 2, 3];
+      const arpNoteIdx = arpPatterns[arpStep];
+      const arpFreq = chord[arpNoteIdx] * 2 * (ch === 0 ? 1 : 1.002);
+      const sixteenthT = (barBeat * 4) % 1;
+      const arpEnv = Math.max(0, 1 - sixteenthT * 2.5) * (arpStep % 4 === 0 ? 1 : 0.6);
+      sample += (4 * Math.abs((t * arpFreq) % 1 - 0.5) - 1) * arpEnv * 0.03;
+
+      // === DISSONANT PAD (tritone tension) ===
+      const padFreq1 = chord[1] * 0.5;
+      const padFreq2 = padFreq1 * 1.414; // tritone
+      const padBreath = 0.4 + 0.6 * Math.sin(2 * Math.PI * t / (duration * 0.5));
+      sample += Math.sin(2 * Math.PI * padFreq1 * t) * 0.02 * padBreath;
+      sample += Math.sin(2 * Math.PI * padFreq2 * t + Math.sin(t * 2) * 0.8) * 0.015 * padBreath;
+
+      // === WAR DRUMS (kick on 1/3, snare on 2/4) ===
+      const kickBeats = [0, 2];
+      const snareBeats = [1, 3];
+      for (const kb of kickBeats) {
+        const distToKick = barBeat - kb;
+        if (distToKick >= 0 && distToKick < 0.15) {
+          const kickEnv = 1 - distToKick / 0.15;
+          const kickFreq = 60 - distToKick * 200;
+          sample += Math.sin(2 * Math.PI * kickFreq * t) * kickEnv * 0.12;
+        }
+      }
+      for (const sb of snareBeats) {
+        const distToSnare = barBeat - sb;
+        if (distToSnare >= 0 && distToSnare < 0.1) {
+          const snareEnv = 1 - distToSnare / 0.1;
+          sample += (Math.random() * 2 - 1) * snareEnv * 0.08;
+          sample += Math.sin(2 * Math.PI * 200 * t) * snareEnv * 0.04;
+        }
+      }
+
+      // === NOISE CRACKLE (atmospheric) ===
+      if (currentBeatInBar % 2 === 1 && intensity > 0.7) {
+        sample += (Math.random() * 2 - 1) * 0.008;
+      }
+
+      // Master envelope
+      const fadeZone = 0.01;
+      let masterEnv = 1;
+      if (t < duration * fadeZone) masterEnv = t / (duration * fadeZone);
+      else if (t > duration * (1 - fadeZone)) masterEnv = (duration - t) / (duration * fadeZone);
+
+      data[i] = sample * masterEnv * 0.85;
+    }
+  }
+  return buffer;
+};
+
+export const startBossBGM = () => {
+  const ac = ensureContext();
+  if (bossBGMPlaying) return;
+  bossBGMPlaying = true;
+  bossBGMSource = ac.createBufferSource();
+  bossBGMSource.buffer = buildBossBGMBuffer();
+  bossBGMSource.loop = true;
+  bossBGMSource.connect(bgmGain!);
+  bossBGMSource.start();
+};
+
+export const stopBossBGM = () => {
+  if (bossBGMSource) {
+    bossBGMSource.stop();
+    bossBGMSource = null;
+  }
+  bossBGMPlaying = false;
+};
+
+// Boss-specific SFX
+export const sfxBossHit = () => {
+  // Impact on boss: heavy thud with metallic ring
+  const ac = ensureContext();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(60, ac.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.2, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.25);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 0.25);
+  // Metallic ring
+  playTone(800, 0.15, 'triangle', 0.08, 0.01, 0.05);
+  playNoise(0.08, 0.06, 1500, 'bandpass');
+};
+
+export const sfxBossBeam = () => {
+  // Charging beam: rising static burst
+  const ac = ensureContext();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(100, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(800, ac.currentTime + 0.3);
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0.12, ac.currentTime + 0.15);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 0.4);
+  playNoise(0.3, 0.1, 3000, 'highpass');
+};
+
+export const sfxPlayerShoot = () => {
+  // Green sig projectile: quick pew sound
+  playTone(600, 0.06, 'square', 0.1, 0.005, 0.02);
+  playTone(900, 0.04, 'triangle', 0.05, 0.005, 0.01);
+};
+
+export const sfxBossDefeat = () => {
+  // Epic defeat: descending explosion + victory fanfare
+  const ac = ensureContext();
+  // Explosion rumble
+  playNoise(1.5, 0.2, 400, 'lowpass');
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(300, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(20, ac.currentTime + 1.2);
+  gain.gain.setValueAtTime(0.15, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.5);
+  osc.connect(gain);
+  gain.connect(masterGain!);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 1.5);
+  // Victory chime after delay
+  setTimeout(() => {
+    const freqs = [523, 659, 784, 1047];
+    freqs.forEach((f, i) => {
+      const osc2 = ac.createOscillator();
+      const gain2 = ac.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.value = f;
+      const t2 = ac.currentTime + i * 0.15;
+      gain2.gain.setValueAtTime(0.15, t2);
+      gain2.gain.linearRampToValueAtTime(0, t2 + 0.5);
+      osc2.connect(gain2);
+      gain2.connect(masterGain!);
+      osc2.start(t2);
+      osc2.stop(t2 + 0.5);
+    });
+  }, 800);
+};

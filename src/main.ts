@@ -1,7 +1,8 @@
 import './style.css';
 import { mountGame } from './game';
 import { mountRunner } from './runner';
-import { markLevel2Complete } from './progress';
+import { mountBoss } from './boss';
+import { markLevel2Complete, markLevel3Complete } from './progress';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -75,6 +76,31 @@ document.addEventListener('keydown', (e) => {
 // Level orchestration
 let runnerCleanup: (() => void) | null = null;
 let gameCleanup: (() => void) | null = null;
+let bossCleanup: (() => void) | null = null;
+
+function launchLevel3() {
+  gameCleanup?.();
+  gameCleanup = null;
+  runnerCleanup?.();
+  runnerCleanup = null;
+  bossCleanup?.();
+  bossCleanup = mountBoss(
+    gameRoot!,
+    () => {
+      // Level 3 complete
+      markLevel3Complete();
+      bossCleanup?.();
+      bossCleanup = null;
+      launchLevel1();
+    },
+    () => {
+      // Quit back to Level 1
+      bossCleanup?.();
+      bossCleanup = null;
+      launchLevel1();
+    },
+  );
+}
 
 function launchLevel2() {
   gameCleanup?.();
@@ -83,11 +109,11 @@ function launchLevel2() {
   runnerCleanup = mountRunner(
     gameRoot!,
     () => {
-      // Level 2 complete
+      // Level 2 complete — advance to Level 3
       markLevel2Complete();
       runnerCleanup?.();
       runnerCleanup = null;
-      launchLevel1();
+      launchLevel3();
     },
     () => {
       // Quit back to Level 1 (start menu)
@@ -101,8 +127,10 @@ function launchLevel2() {
 function launchLevel1() {
   runnerCleanup?.();
   runnerCleanup = null;
+  bossCleanup?.();
+  bossCleanup = null;
   gameRoot!.innerHTML = '';
-  gameCleanup = mountGame(gameRoot!, { launchLevel2 });
+  gameCleanup = mountGame(gameRoot!, { launchLevel2, launchLevel3 });
 }
 
 launchLevel1();

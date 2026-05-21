@@ -1,9 +1,10 @@
 import { initAudio, startBGM, setBGMChapter, sfxJump, sfxEnemyKill, sfxCollectSig, sfxKeyObtained, sfxGateOpen, sfxCheckpoint, sfxWin, sfxChapterTransition, sfxLand, sfxMenuSelect, sfxDeath, sfxWarpIn, sfxExtraLife, sfxFall } from './audio';
 import { getLeaderboard, addToLeaderboard, isHighScore, getTimeLeaderboard, addToTimeLeaderboard, isFastestTime, formatTime, getL2Leaderboard, type LeaderboardEntry, type TimeLeaderboardEntry } from './leaderboard';
-import { markLevel1Complete, isLevel2Unlocked } from './progress';
+import { markLevel1Complete, isLevel2Unlocked, isLevel3Unlocked } from './progress';
 
 export interface GameOptions {
   launchLevel2?: () => void;
+  launchLevel3?: () => void;
 }
 
 export type Rect = {
@@ -836,13 +837,13 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           showingStory = false;
           storyPageFromMenu = 0;
         }
-      } else if (startMenuSelection === 2 && keys.escape) {
+      } else if (startMenuSelection === 3 && keys.escape) {
         // Back from leaderboard view in menu
         keys.escape = false;
         startMenuSelection = 0;
       } else {
         if (keys.arrowup || keys.w || keys.arrowleft || keys.a) {
-          startMenuSelection = (startMenuSelection + 3) % 4;
+          startMenuSelection = (startMenuSelection + 4) % 5;
           keys.arrowup = false;
           keys.w = false;
           keys.arrowleft = false;
@@ -850,7 +851,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           sfxMenuSelect();
         }
         if (keys.arrowdown || keys.s || keys.arrowright || keys.d) {
-          startMenuSelection = (startMenuSelection + 1) % 4;
+          startMenuSelection = (startMenuSelection + 1) % 5;
           keys.arrowdown = false;
           keys.s = false;
           keys.arrowright = false;
@@ -903,14 +904,19 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
               options.launchLevel2();
             }
           } else if (startMenuSelection === 2) {
-            // Leaderboard — handled in draw (just stays in menu)
+            // Level 3 — launch boss
+            if (isLevel3Unlocked() && options.launchLevel3) {
+              options.launchLevel3();
+            }
           } else if (startMenuSelection === 3) {
+            // Leaderboard — handled in draw (just stays in menu)
+          } else if (startMenuSelection === 4) {
             // Story
             showingStory = true;
             storyPageFromMenu = 0;
           }
         }
-        if (startMenuSelection === 2) {
+        if (startMenuSelection === 3) {
           if (keys['1']) { startMenuLeaderboardTab = 'score'; keys['1'] = false; }
           if (keys['2']) { startMenuLeaderboardTab = 'time'; keys['2'] = false; }
           if (keys['3']) { startMenuLeaderboardTab = 'l2score'; keys['3'] = false; }
@@ -3634,13 +3640,14 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       } else {
         // Always show menu items as selectable tabs
         const level2Unlocked = isLevel2Unlocked();
-        const menuItems = ['LEVEL 1', level2Unlocked ? 'LEVEL 2' : 'LEVEL 2 🔒', 'LEADERBOARD', 'STORY'];
+        const level3Unlocked = isLevel3Unlocked();
+        const menuItems = ['LEVEL 1', level2Unlocked ? 'LEVEL 2' : 'LEVEL 2 🔒', level3Unlocked ? 'LEVEL 3' : 'LEVEL 3 🔒', 'LEADERBOARD', 'STORY'];
         const menuY = 155;
-        const menuSpacing = 150;
-        const menuStartX = WIDTH / 2 - menuSpacing * 1.5;
+        const menuSpacing = 120;
+        const menuStartX = WIDTH / 2 - menuSpacing * 2;
         menuItems.forEach((item, i) => {
           const selected = i === startMenuSelection;
-          const locked = i === 1 && !level2Unlocked;
+          const locked = (i === 1 && !level2Unlocked) || (i === 2 && !level3Unlocked);
           ctx.fillStyle = locked ? '#333333' : selected ? '#00ff00' : '#555555';
           ctx.font = selected ? 'bold 13px monospace' : '12px monospace';
           const prefix = selected ? '▶ ' : '  ';
@@ -3677,6 +3684,23 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
             ctx.fillText('Restore harmony to Acoustica first!', WIDTH / 2, 270);
           }
         } else if (startMenuSelection === 2) {
+          // Level 3 selected
+          if (level3Unlocked) {
+            ctx.fillStyle = '#aaa';
+            ctx.font = '13px monospace';
+            ctx.fillText('Final Boss • Lord Noise\'s Mech • Restore the Harmonic Core', WIDTH / 2, 220);
+            ctx.fillStyle = '#666';
+            ctx.font = '12px monospace';
+            ctx.fillText('Press ENTER or SPACE to launch', WIDTH / 2, 270);
+          } else {
+            ctx.fillStyle = '#666';
+            ctx.font = '13px monospace';
+            ctx.fillText('Complete Level 2 to face Lord Noise', WIDTH / 2, 220);
+            ctx.fillStyle = '#444';
+            ctx.font = '12px monospace';
+            ctx.fillText('Survive the Static Fields first!', WIDTH / 2, 270);
+          }
+        } else if (startMenuSelection === 3) {
           // Leaderboard view with 3 tabs
           const tab = startMenuLeaderboardTab;
           ctx.fillStyle = tab === 'score' ? '#00ff00' : '#555';
@@ -3737,7 +3761,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
           ctx.fillStyle = '#555';
           ctx.font = '10px monospace';
           ctx.fillText('1/2/3: switch tab • ←→: menu • ENTER: select', WIDTH / 2, HEIGHT - 48);
-        } else if (startMenuSelection === 3) {
+        } else if (startMenuSelection === 4) {
           // Story selected — show prompt
           ctx.fillStyle = '#aaa';
           ctx.font = '13px monospace';
