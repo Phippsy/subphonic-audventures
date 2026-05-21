@@ -41,7 +41,7 @@ interface Collectible {
 
 // === JAMES DIALOG ===
 const jamesDialog: { lines: string[]; speaker: string }[] = [
-  { speaker: 'James', lines: ['Sonia! Excellent timing.', 'I\'m James — head of customer success,', 'dev lead, project manager, and general', 'Swiss army knife around here.'] },
+  { speaker: 'James', lines: ['Sonia! Excellent timing.', 'I\'m James — head of customer success,', 'real developer, chair of the Ski Trip', 'organising committee, and general', 'Swiss army knife around here.'] },
   { speaker: 'James', lines: ['You\'ve done brilliantly restoring', 'Acoustica. But Count Crosstalk has one', 'final trick — the Static Fields.'] },
   { speaker: 'James', lines: ['These fields are pure sonic chaos.', 'You can\'t walk through them —', 'you\'ll need to FLY.'] },
   { speaker: 'James', lines: ['I\'ve rigged up an Insight Booster', 'for you. Hold UP / SPACE to thrust', 'upward, release to glide down. Simple!'] },
