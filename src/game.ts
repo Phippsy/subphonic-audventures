@@ -2947,7 +2947,7 @@ export function mountGame(container: HTMLElement, options: GameOptions = {}): ()
       ctx.fillStyle = '#ff6666';
       ctx.font = '13px monospace';
       ctx.fillText('By the way, you have 469 unread documents', 110, 290);
-      ctx.fillText('in Adoptecth. I\'m coming for you.', 110, 310);
+      ctx.fillText('in Adoptech. I\'m coming for you.', 110, 310);
       ctx.fillStyle = '#cccccc';
       ctx.fillText('', 110, 330);
       ctx.fillText('*straightens tie disapprovingly*', 110, 350);

@@ -1100,38 +1100,89 @@ export const sfxPlayerShoot = () => {
 };
 
 export const sfxBossDefeat = () => {
-  // Epic defeat: descending explosion + victory fanfare
+  // Ethereal angelic victory — sustained choir-like tones with shimmer
   const ac = ensureContext();
-  // Explosion rumble
-  playNoise(1.5, 0.2, 400, 'lowpass');
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(300, ac.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(20, ac.currentTime + 1.2);
-  gain.gain.setValueAtTime(0.15, ac.currentTime);
-  gain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.5);
-  osc.connect(gain);
-  gain.connect(sfxGain!);
-  osc.start(ac.currentTime);
-  osc.stop(ac.currentTime + 1.5);
-  // Victory chime after delay
-  setTimeout(() => {
-    const freqs = [523, 659, 784, 1047];
-    freqs.forEach((f, i) => {
-      const osc2 = ac.createOscillator();
-      const gain2 = ac.createGain();
-      osc2.type = 'triangle';
-      osc2.frequency.value = f;
-      const t2 = ac.currentTime + i * 0.15;
-      gain2.gain.setValueAtTime(0.15, t2);
-      gain2.gain.linearRampToValueAtTime(0, t2 + 0.5);
-      osc2.connect(gain2);
-      gain2.connect(sfxGain!);
-      osc2.start(t2);
-      osc2.stop(t2 + 0.5);
+  const now = ac.currentTime;
+
+  // Initial explosion rumble (brief)
+  playNoise(1.0, 0.12, 300, 'lowpass');
+  const rumble = ac.createOscillator();
+  const rumbleGain = ac.createGain();
+  rumble.type = 'sawtooth';
+  rumble.frequency.setValueAtTime(200, now);
+  rumble.frequency.exponentialRampToValueAtTime(20, now + 0.8);
+  rumbleGain.gain.setValueAtTime(0.1, now);
+  rumbleGain.gain.linearRampToValueAtTime(0, now + 1.0);
+  rumble.connect(rumbleGain);
+  rumbleGain.connect(sfxGain!);
+  rumble.start(now);
+  rumble.stop(now + 1.0);
+
+  // Angelic choir — layered sine/triangle pads that swell and sustain
+  const choirStart = now + 0.8;
+  const chordNotes = [
+    [261, 329, 392, 523],  // C major
+    [349, 440, 523, 698],  // F major (higher)
+    [392, 493, 587, 784],  // G major (resolve)
+    [523, 659, 784, 1047], // C major octave (triumph)
+  ];
+
+  chordNotes.forEach((chord, ci) => {
+    const chordTime = choirStart + ci * 2;
+    chord.forEach((freq, ni) => {
+      // Main tone (sine — pure, angelic)
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, chordTime);
+      // Gentle vibrato
+      const lfo = ac.createOscillator();
+      const lfoGain = ac.createGain();
+      lfo.frequency.value = 4 + ni * 0.5;
+      lfoGain.gain.value = freq * 0.003;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(chordTime);
+      lfo.stop(chordTime + 2.5);
+
+      gain.gain.setValueAtTime(0, chordTime);
+      gain.gain.linearRampToValueAtTime(0.04, chordTime + 0.4);
+      gain.gain.setValueAtTime(0.04, chordTime + 1.5);
+      gain.gain.linearRampToValueAtTime(0, chordTime + 2.5);
+      osc.connect(gain);
+      gain.connect(sfxGain!);
+      osc.start(chordTime);
+      osc.stop(chordTime + 2.6);
+
+      // Shimmer layer (triangle, octave up)
+      const shim = ac.createOscillator();
+      const shimGain = ac.createGain();
+      shim.type = 'triangle';
+      shim.frequency.value = freq * 2;
+      shimGain.gain.setValueAtTime(0, chordTime + 0.2);
+      shimGain.gain.linearRampToValueAtTime(0.015, chordTime + 0.6);
+      shimGain.gain.linearRampToValueAtTime(0, chordTime + 2.3);
+      shim.connect(shimGain);
+      shimGain.connect(sfxGain!);
+      shim.start(chordTime + 0.2);
+      shim.stop(chordTime + 2.4);
     });
-  }, 800);
+  });
+
+  // Final sustained high note (lingers)
+  const finalTime = choirStart + 7;
+  const finalOsc = ac.createOscillator();
+  const finalGain = ac.createGain();
+  finalOsc.type = 'sine';
+  finalOsc.frequency.value = 1047; // high C
+  finalGain.gain.setValueAtTime(0, finalTime);
+  finalGain.gain.linearRampToValueAtTime(0.05, finalTime + 0.5);
+  finalGain.gain.setValueAtTime(0.05, finalTime + 2);
+  finalGain.gain.linearRampToValueAtTime(0, finalTime + 4);
+  finalOsc.connect(finalGain);
+  finalGain.connect(sfxGain!);
+  finalOsc.start(finalTime);
+  finalOsc.stop(finalTime + 4.1);
 };
 
 export const sfxObstacleSmash = () => {
