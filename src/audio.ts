@@ -312,33 +312,65 @@ let runnerBGMPlaying = false;
 
 const buildRunnerBGMBuffer = (): AudioBuffer => {
   const ac = ensureContext();
-  const bpm = 132;
+  const bpm = 138;
   const beatDur = 60 / bpm;
-  const bars = 8;
-  const duration = bars * 4 * beatDur; // 8 bars of 4 beats
+  const bars = 16;
+  const duration = bars * 4 * beatDur; // 16 bars
   const sampleRate = ac.sampleRate;
   const length = Math.ceil(sampleRate * duration);
   const buffer = ac.createBuffer(2, length, sampleRate);
 
-  // Chord progression: Dm - Gm - Bb - A (i - iv - VI - V) — 2 bars each
-  // Frequencies for each chord (root, third, fifth, octave)
-  const chords: [number, number, number, number][] = [
-    [147, 175, 220, 294],   // Dm: D3, F3, A3, D4
-    [196, 233, 294, 392],   // Gm: G3, Bb3, D4, G4
-    [117, 147, 175, 233],   // Bb: Bb2, D3, F3, Bb3
-    [220, 277, 330, 440],   // A:  A3, C#4, E4, A4
+  // Extended chord progression: 2 bars each, 8 chords over 16 bars
+  // Dm - Am - Bb - Gm - Dm - F - C - A7 (i - v - VI - iv - i - III - VII - V7)
+  const chords: number[][] = [
+    [147, 175, 220, 294, 349],   // Dm: D3, F3, A3, D4, F4
+    [110, 131, 165, 220, 262],   // Am: A2, C3, E3, A3, C4
+    [117, 147, 175, 233, 294],   // Bb: Bb2, D3, F3, Bb3, D4
+    [98, 117, 147, 196, 233],    // Gm: G2, Bb2, D3, G3, Bb3
+    [147, 175, 220, 294, 349],   // Dm: D3, F3, A3, D4, F4
+    [175, 220, 262, 349, 440],   // F:  F3, A3, C4, F4, A4
+    [131, 165, 196, 262, 330],   // C:  C3, E3, G3, C4, E4
+    [220, 277, 330, 415, 440],   // A7: A3, C#4, E4, G#4, A4
   ];
 
-  // Bass notes (root of each chord, one octave lower)
-  const bassNotes = [73.5, 98, 58.5, 110]; // D2, G2, Bb1, A2
-
-  // Arpeggio patterns (indices into chord array) — varied per chord
-  const arpPatterns = [
-    [0, 1, 2, 3, 2, 1, 0, 2],  // ascending-descending
-    [0, 2, 1, 3, 0, 3, 2, 1],  // jumping
-    [0, 1, 2, 3, 3, 2, 1, 0],  // up then down
-    [2, 0, 3, 1, 2, 3, 0, 1],  // mixed tension
+  // Bass line — root notes with passing tones
+  const bassLines: number[][] = [
+    [73.5, 73.5, 73.5, 69],     // D2, D2, D2, C#2 (chromatic approach)
+    [55, 55, 62, 65],            // A1, A1, Bb1, C2 (walking up)
+    [58.5, 58.5, 62, 65],       // Bb1, Bb1, B1, C2
+    [49, 49, 55, 58.5],         // G1, G1, A1, Bb1
+    [73.5, 69, 65, 62],         // D2, C#2, C2, B1 (descending)
+    [87.5, 87.5, 82, 78],       // F2, F2, E2, Eb2
+    [65, 65, 69, 73.5],         // C2, C2, C#2, D2 (leading back)
+    [55, 58.5, 62, 65],         // A1, Bb1, B1, C2 (chromatic build)
   ];
+
+  // Arpeggio patterns — more varied, with rhythmic interest
+  const arpPatterns: number[][] = [
+    [0, 2, 1, 3, 4, 3, 2, 1, 0, 3, 2, 4, 3, 1, 0, 2],  // flowing
+    [0, 0, 2, 3, 4, 4, 3, 2, 1, 1, 3, 4, 2, 2, 0, 1],  // rhythmic doubles
+    [4, 3, 2, 1, 0, 1, 2, 3, 4, 2, 0, 3, 1, 4, 2, 0],  // descending start
+    [0, 2, 4, 2, 0, 3, 1, 4, 0, 2, 3, 1, 4, 3, 2, 0],  // wide jumps
+    [0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 4, 3, 1, 0, 2, 4],  // ascending
+    [4, 2, 0, 2, 4, 3, 1, 0, 3, 4, 2, 1, 0, 1, 3, 4],  // high emphasis
+    [0, 3, 1, 4, 2, 0, 3, 1, 4, 2, 0, 3, 4, 2, 1, 0],  // interval jumps
+    [2, 4, 3, 1, 0, 2, 4, 3, 0, 1, 2, 4, 3, 2, 1, 0],  // tension build
+  ];
+
+  // Counter-melody: a singable phrase per 2-bar section (beat positions + note indices)
+  const melodyPhrases: { beat: number; noteIdx: number; dur: number }[][] = [
+    [{ beat: 0, noteIdx: 4, dur: 1.5 }, { beat: 2, noteIdx: 3, dur: 1 }, { beat: 3.5, noteIdx: 2, dur: 0.5 }, { beat: 5, noteIdx: 3, dur: 1.5 }, { beat: 7, noteIdx: 4, dur: 1 }],
+    [{ beat: 1, noteIdx: 3, dur: 1 }, { beat: 2.5, noteIdx: 4, dur: 1.5 }, { beat: 4.5, noteIdx: 2, dur: 1 }, { beat: 6, noteIdx: 3, dur: 2 }],
+    [{ beat: 0, noteIdx: 2, dur: 2 }, { beat: 2.5, noteIdx: 3, dur: 1.5 }, { beat: 4.5, noteIdx: 4, dur: 1 }, { beat: 6, noteIdx: 2, dur: 1 }, { beat: 7.5, noteIdx: 3, dur: 0.5 }],
+    [{ beat: 0.5, noteIdx: 4, dur: 1 }, { beat: 2, noteIdx: 3, dur: 1 }, { beat: 3.5, noteIdx: 2, dur: 1.5 }, { beat: 5.5, noteIdx: 1, dur: 1 }, { beat: 7, noteIdx: 2, dur: 1 }],
+    [{ beat: 0, noteIdx: 3, dur: 1 }, { beat: 1.5, noteIdx: 4, dur: 1.5 }, { beat: 3.5, noteIdx: 3, dur: 0.5 }, { beat: 4.5, noteIdx: 2, dur: 1.5 }, { beat: 6.5, noteIdx: 4, dur: 1.5 }],
+    [{ beat: 0, noteIdx: 4, dur: 2 }, { beat: 2.5, noteIdx: 3, dur: 1 }, { beat: 4, noteIdx: 4, dur: 1 }, { beat: 5.5, noteIdx: 3, dur: 1 }, { beat: 7, noteIdx: 4, dur: 1 }],
+    [{ beat: 0.5, noteIdx: 3, dur: 1.5 }, { beat: 2.5, noteIdx: 2, dur: 1 }, { beat: 4, noteIdx: 3, dur: 1.5 }, { beat: 6, noteIdx: 4, dur: 2 }],
+    [{ beat: 0, noteIdx: 4, dur: 1 }, { beat: 1.5, noteIdx: 3, dur: 1 }, { beat: 3, noteIdx: 4, dur: 1 }, { beat: 4.5, noteIdx: 3, dur: 0.5 }, { beat: 5.5, noteIdx: 4, dur: 2.5 }],
+  ];
+
+  // Swing feel: offset every other 16th note slightly
+  const swingAmount = 0.08; // proportion of 16th note duration
 
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
@@ -346,69 +378,130 @@ const buildRunnerBGMBuffer = (): AudioBuffer => {
       const t = i / sampleRate;
       const beatPos = t / beatDur;
       const barIndex = Math.floor(beatPos / 4);
-      const chordIndex = Math.floor(barIndex / 2) % 4;
+      const chordIndex = Math.floor(barIndex / 2) % 8;
       const chord = chords[chordIndex];
-      const bassFreq = bassNotes[chordIndex];
+      const bassLine = bassLines[chordIndex];
       const arpPattern = arpPatterns[chordIndex];
+      const intensity = barIndex / bars; // 0-1 builds over entire loop
 
-      // Position within the beat
-      const sixteenthIndex = Math.floor((beatPos % 1) * 4);
-      const barBeat = Math.floor(beatPos % 4);
-      const arpStep = (barBeat * 4 + sixteenthIndex) % 8;
+      // Position within the bar/beat
+      const barBeat = beatPos % 4;
+      const rawSixteenth = Math.floor(barBeat * 4);
+      // Apply swing to even-numbered 16ths
+      const sixteenthInBeat = rawSixteenth % 4;
+      const swingOffset = (sixteenthInBeat % 2 === 1) ? swingAmount : 0;
+      const sixteenthT = ((barBeat * 4 + swingOffset) % 1);
+      const arpStep = (Math.floor(barBeat * 4)) % 16;
 
-      // Time within current sixteenth note (0-1)
-      const sixteenthT = ((beatPos % 1) * 4) % 1;
+      // Which beat of the bar (for bass walking)
+      const currentBeatInBar = Math.floor(barBeat);
+      const bassFreq = bassLine[currentBeatInBar % 4];
 
       let sample = 0;
 
-      // === LAYER 1: BASS (square wave, quarter notes with decay) ===
+      // === LAYER 1: WALKING BASS (square + sine, syncopated) ===
       const bassPhase = (t * bassFreq) % 1;
-      const bassEnv = Math.max(0, 1 - (beatPos % 1) * 1.8); // decay over beat
+      // Dotted eighth rhythm: accent on beats 1, 2.5, 4
+      const bassSyncPattern = (barBeat % 1);
+      const bassAccent = (currentBeatInBar === 0 || currentBeatInBar === 3) ? 1.0 :
+                         (barBeat % 1 > 0.4 && barBeat % 1 < 0.6) ? 0.8 : 0.5;
+      const bassEnv = Math.max(0, 1 - bassSyncPattern * 2.0) * bassAccent;
       const bassWave = bassPhase < 0.5 ? 1 : -1;
-      sample += bassWave * bassEnv * 0.09;
-      // Sub-bass (sine, one octave lower)
-      sample += Math.sin(2 * Math.PI * bassFreq * 0.5 * t) * bassEnv * 0.06;
+      sample += bassWave * bassEnv * (0.07 + intensity * 0.03);
+      // Sub-bass (sine)
+      sample += Math.sin(2 * Math.PI * bassFreq * 0.5 * t) * bassEnv * 0.05;
+      // Bass harmonics (add grit)
+      sample += Math.sin(2 * Math.PI * bassFreq * 3 * t) * bassEnv * 0.015 * intensity;
 
-      // === LAYER 2: ARPEGGIO (triangle wave, 16th notes) ===
+      // === LAYER 2: ARPEGGIO (triangle wave, 16th notes with swing) ===
       const arpNoteIndex = arpPattern[arpStep];
-      const arpFreq = chord[arpNoteIndex] * (ch === 0 ? 1 : 1.002); // slight stereo detune
+      const arpFreq = chord[arpNoteIndex] * (ch === 0 ? 1 : 1.003);
       const arpPhase = (t * arpFreq) % 1;
-      const arpEnv = Math.max(0, 1 - sixteenthT * 2.5); // quick decay
-      // Triangle wave
+      // Velocity accents: every 4th 16th louder
+      const arpAccent = (arpStep % 4 === 0) ? 1.0 : (arpStep % 4 === 2) ? 0.7 : 0.5;
+      const arpEnv = Math.max(0, 1 - sixteenthT * 2.2) * arpAccent;
       const arpWave = 4 * Math.abs(arpPhase - 0.5) - 1;
-      sample += arpWave * arpEnv * 0.07;
+      sample += arpWave * arpEnv * (0.05 + intensity * 0.025);
 
-      // === LAYER 3: TICKING PULSE (8th notes - urgency clock) ===
-      const eighthPos = (beatPos * 2) % 1;
-      const tickEnv = eighthPos < 0.1 ? (1 - eighthPos / 0.1) : 0;
-      // High-pitched tick (noise-like)
-      const tickFreq = 1800 + chordIndex * 200;
-      sample += Math.sin(2 * Math.PI * tickFreq * t) * tickEnv * 0.025;
+      // === LAYER 3: COUNTER-MELODY (sine + slight saw, longer notes) ===
+      const melPhrase = melodyPhrases[chordIndex];
+      const barBeatAbs = (barIndex % 2) * 4 + barBeat; // 0-8 within 2-bar phrase
+      let melSample = 0;
+      for (const note of melPhrase) {
+        if (barBeatAbs >= note.beat && barBeatAbs < note.beat + note.dur) {
+          const noteProgress = (barBeatAbs - note.beat) / note.dur;
+          // ADSR-ish: attack 10%, sustain, release 30%
+          let melEnv = 1;
+          if (noteProgress < 0.1) melEnv = noteProgress / 0.1;
+          else if (noteProgress > 0.7) melEnv = (1 - noteProgress) / 0.3;
+          const melFreq = chord[note.noteIdx] * 2 * (ch === 0 ? 1 : 0.998);
+          // Sine with vibrato
+          const vibrato = Math.sin(2 * Math.PI * 5.5 * t) * 3 * noteProgress;
+          melSample += Math.sin(2 * Math.PI * (melFreq + vibrato) * t) * melEnv;
+          // Add subtle sawtooth harmonic
+          const melPhase2 = (t * melFreq * 2) % 1;
+          melSample += (melPhase2 * 2 - 1) * melEnv * 0.15;
+        }
+      }
+      sample += melSample * (0.03 + intensity * 0.015);
 
-      // === LAYER 4: PAD/DRONE (connects to Level 1 DNA) ===
+      // === LAYER 4: URGENCY TICK (syncopated, pitch rises with intensity) ===
+      const tickPattern = [1, 0, 1, 0, 1, 1, 0, 1]; // syncopated 8th note pattern
+      const eighthIndex = Math.floor(barBeat * 2) % 8;
+      const eighthT = (barBeat * 2) % 1;
+      if (tickPattern[eighthIndex]) {
+        const tickEnv = eighthT < 0.08 ? (1 - eighthT / 0.08) : 0;
+        const tickFreq = 2200 + chordIndex * 150 + intensity * 600;
+        sample += Math.sin(2 * Math.PI * tickFreq * t) * tickEnv * (0.02 + intensity * 0.01);
+        // Second partial for metallic feel
+        sample += Math.sin(2 * Math.PI * tickFreq * 2.7 * t) * tickEnv * 0.008;
+      }
+
+      // === LAYER 5: PAD (evolving, filter sweep) ===
       const padRoot = chord[0] * 0.5;
+      const padThird = chord[1] * 0.5;
       const padFifth = chord[2] * 0.5;
-      const padBreath = 0.6 + 0.4 * Math.sin(2 * Math.PI * t / (beatDur * 8));
-      sample += Math.sin(2 * Math.PI * padRoot * t) * 0.03 * padBreath;
-      sample += Math.sin(2 * Math.PI * padFifth * t + Math.sin(t * 0.7) * 1.5) * 0.02 * padBreath;
+      // Slow filter sweep (simulated via harmonic mix)
+      const filterSweep = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(2 * Math.PI * t / (duration * 0.25)));
+      const padBreath = 0.5 + 0.5 * Math.sin(2 * Math.PI * t / (beatDur * 16));
+      const padVol = padBreath * 0.025 * (0.7 + intensity * 0.3);
+      sample += Math.sin(2 * Math.PI * padRoot * t) * padVol;
+      sample += Math.sin(2 * Math.PI * padThird * t + Math.sin(t * 0.4) * 1.2) * padVol * 0.7;
+      sample += Math.sin(2 * Math.PI * padFifth * t + Math.sin(t * 0.6) * 1.5) * padVol * filterSweep;
+      // 7th for colour (adds tension)
+      const pad7th = chord[3] * 0.25;
+      sample += Math.sin(2 * Math.PI * pad7th * t) * padVol * 0.3 * intensity;
 
-      // === LAYER 5: MELODIC HOOK (every 2 bars, ascending phrase) ===
-      const twoBarPos = (beatPos % 8) / 8; // 0-1 over 2 bars
-      if (twoBarPos < 0.5) {
-        // First bar: ascending motif on beats 1 and 3
-        const motifBeat = barBeat;
-        if (motifBeat === 0 || motifBeat === 2) {
-          const motifFreq = chord[motifBeat === 0 ? 2 : 3] * 2; // high octave
-          const motifEnv = Math.max(0, 1 - (beatPos % 1) * 3);
-          sample += Math.sin(2 * Math.PI * motifFreq * t) * motifEnv * 0.035;
+      // === LAYER 6: RHYTHMIC STABS (off-beat hits, builds energy) ===
+      if (intensity > 0.3) {
+        // Stabs on the "and" of beats 2 and 4
+        const stabBeats = [1.5, 3.5];
+        for (const sb of stabBeats) {
+          const distToStab = barBeat - sb;
+          if (distToStab >= 0 && distToStab < 0.15) {
+            const stabEnv = 1 - distToStab / 0.15;
+            const stabFreq = chord[2] * (ch === 0 ? 2 : 2.01);
+            const stabWave = ((t * stabFreq) % 1 < 0.5 ? 1 : -1); // square
+            sample += stabWave * stabEnv * 0.03 * (intensity - 0.3) / 0.7;
+          }
         }
       }
 
-      // === SUBTLE NOISE (shared DNA with Level 1) ===
-      sample += (Math.random() * 2 - 1) * 0.008;
+      // === LAYER 7: FILLS (every 4 bars on bar 4, beat 4) ===
+      if (barIndex % 4 === 3 && currentBeatInBar === 3) {
+        // Rapid descending 32nd notes
+        const fillStep = Math.floor(barBeat % 1 * 8);
+        const fillFreq = chord[4] * 2 * Math.pow(0.92, fillStep);
+        const fillT = (barBeat % 1 * 8) % 1;
+        const fillEnv = fillT < 0.5 ? (1 - fillT * 2) : 0;
+        sample += Math.sin(2 * Math.PI * fillFreq * t) * fillEnv * 0.04;
+      }
 
-      // Master envelope: slight fade at loop boundary for seamless loop
-      const fadeZone = 0.02; // 2% of duration
+      // === SUBTLE NOISE (shared DNA with Level 1, less prominent) ===
+      sample += (Math.random() * 2 - 1) * 0.005;
+
+      // Master envelope for seamless loop
+      const fadeZone = 0.015;
       let masterEnv = 1;
       if (t < duration * fadeZone) {
         masterEnv = t / (duration * fadeZone);
@@ -416,7 +509,7 @@ const buildRunnerBGMBuffer = (): AudioBuffer => {
         masterEnv = (duration - t) / (duration * fadeZone);
       }
 
-      data[i] = sample * masterEnv;
+      data[i] = sample * masterEnv * 0.92; // slight headroom
     }
   }
   return buffer;

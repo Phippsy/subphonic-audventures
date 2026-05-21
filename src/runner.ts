@@ -254,7 +254,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       gameOverTimer += dt;
       if (won) {
         if (wonEndDialog) {
-          // End dialog (James thanking Sonia)
+          // End dialog (James thanking Sonia) — plays FIRST before leaderboard
           wonEndDialogAlpha = Math.min(1, wonEndDialogAlpha + dt * 3);
           if (wonEndDialogCooldown > 0) wonEndDialogCooldown -= dt;
           if (wonEndDialogCooldown <= 0 && (keys[' '] || keys.enter)) {
@@ -264,16 +264,14 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
             wonEndDialogAlpha = 0;
             wonEndDialogCooldown = 0.35;
             if (wonEndDialogPage >= endDialog.length) {
-              onComplete();
+              wonEndDialog = false; // dialog done, show leaderboard
+              gameOverTimer = 0;
             }
           }
         } else if (wonNameSubmitted && gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
           keys[' '] = false;
           keys.enter = false;
-          wonEndDialog = true;
-          wonEndDialogPage = 0;
-          wonEndDialogAlpha = 0;
-          wonEndDialogCooldown = 0.5;
+          onComplete();
         }
       } else {
         if (gameOverTimer > 1.5 && (keys[' '] || keys.enter)) {
@@ -330,6 +328,10 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
       score += 1000; // completion bonus
       wonNameEntry = '';
       wonNameSubmitted = false;
+      wonEndDialog = true;
+      wonEndDialogPage = 0;
+      wonEndDialogAlpha = 0;
+      wonEndDialogCooldown = 0.5;
       sfxRunnerWin();
       return;
     }
@@ -1113,7 +1115,7 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
     }
 
     // Win overlay
-    if (won) {
+    if (won && !wonEndDialog) {
       ctx.fillStyle = 'rgba(0, 15, 10, 0.88)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -1228,13 +1230,13 @@ export function mountRunner(container: HTMLElement, onComplete: () => void, onQu
         if (gameOverTimer > 1.5) {
           ctx.fillStyle = '#00ff00';
           ctx.font = '12px monospace';
-          ctx.fillText('SPACE to continue  |  Q to quit', WIDTH / 2, HEIGHT - 30);
+          ctx.fillText('SPACE to finish  |  Q to quit', WIDTH / 2, HEIGHT - 30);
         }
       }
       ctx.textAlign = 'left';
     }
 
-    // End dialog (post-leaderboard, James thanking Sonia)
+    // End dialog (plays before leaderboard, James thanking Sonia)
     if (wonEndDialog) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.97)';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
