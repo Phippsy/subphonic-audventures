@@ -1475,6 +1475,8 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // === MASSIVE POWER CORE (center of torso) ===
     const coreY = 310;
     const corePulse = 0.6 + Math.sin(animTime * 3) * 0.3;
+    // In heart phase, dim the static core (the real target is the moving heart)
+    if (bossStage === 'heart') ctx.globalAlpha = 0.25;
     // Outer housing
     ctx.fillStyle = '#0a0a1a';
     ctx.beginPath();
@@ -1552,6 +1554,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.fill();
 
     // Belly plate (below core)
+    if (bossStage === 'heart') ctx.globalAlpha = 1.0;
     ctx.fillStyle = '#151530';
     ctx.fillRect(bx + 25, coreY + 45, 130, 65);
     ctx.strokeStyle = '#3a3a6a';
@@ -1893,47 +1896,94 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       ctx.textAlign = 'left';
     }
 
-    // === HEART TARGET (phase 2 — exposed power core) ===
+    // === HEART TARGET (phase 2 — exposed power core, HIGHLY VISIBLE) ===
     if (bossStage === 'heart') {
       const hCX = bx + 90;
       const hCY = heartY;
       const heartPulse = 0.7 + Math.sin(animTime * 5) * 0.3;
-      // Heart target glow (pulsing, bright, indicating vulnerability)
-      const heartGlow = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 35);
-      heartGlow.addColorStop(0, `rgba(255, 50, 100, ${heartPulse * 0.6})`);
-      heartGlow.addColorStop(0.4, `rgba(255, 0, 60, ${heartPulse * 0.3})`);
-      heartGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
-      ctx.fillStyle = heartGlow;
+      const fastPulse = 0.5 + Math.sin(animTime * 8) * 0.5;
+
+      // Massive outer beacon glow (very large, unmissable)
+      const beaconGlow = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 70);
+      beaconGlow.addColorStop(0, `rgba(0, 255, 180, ${heartPulse * 0.5})`);
+      beaconGlow.addColorStop(0.3, `rgba(0, 255, 100, ${heartPulse * 0.3})`);
+      beaconGlow.addColorStop(0.6, `rgba(0, 200, 80, ${heartPulse * 0.15})`);
+      beaconGlow.addColorStop(1, 'rgba(0, 150, 50, 0)');
+      ctx.fillStyle = beaconGlow;
       ctx.beginPath();
-      ctx.arc(hCX, hCY, 35, 0, Math.PI * 2);
+      ctx.arc(hCX, hCY, 70, 0, Math.PI * 2);
       ctx.fill();
-      // Heart core (bright target)
-      const heartCoreGrad = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 20);
-      heartCoreGrad.addColorStop(0, `rgba(255, 255, 200, ${heartPulse})`);
-      heartCoreGrad.addColorStop(0.3, `rgba(255, 80, 120, ${heartPulse * 0.9})`);
-      heartCoreGrad.addColorStop(0.7, `rgba(200, 0, 60, ${heartPulse * 0.6})`);
-      heartCoreGrad.addColorStop(1, 'rgba(100, 0, 30, 0)');
+
+      // Secondary pulsing ring (expanding/contracting)
+      const ringRadius = 40 + Math.sin(animTime * 4) * 8;
+      ctx.strokeStyle = `rgba(0, 255, 200, ${0.4 + fastPulse * 0.3})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Heart core (bright neon green/cyan — contrasts with purple body)
+      const heartCoreGrad = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 24);
+      heartCoreGrad.addColorStop(0, `rgba(255, 255, 255, ${heartPulse})`);
+      heartCoreGrad.addColorStop(0.2, `rgba(0, 255, 200, ${heartPulse})`);
+      heartCoreGrad.addColorStop(0.5, `rgba(0, 220, 150, ${heartPulse * 0.9})`);
+      heartCoreGrad.addColorStop(0.8, `rgba(0, 180, 100, ${heartPulse * 0.6})`);
+      heartCoreGrad.addColorStop(1, 'rgba(0, 100, 60, 0)');
       ctx.fillStyle = heartCoreGrad;
       ctx.beginPath();
-      ctx.arc(hCX, hCY, 20, 0, Math.PI * 2);
+      ctx.arc(hCX, hCY, 24, 0, Math.PI * 2);
       ctx.fill();
-      // Spinning ring around heart
-      ctx.strokeStyle = `rgba(255, 100, 150, ${heartPulse * 0.6})`;
+
+      // Bright white center pip
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 + fastPulse * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Spinning rings (dual, opposing directions)
+      ctx.strokeStyle = `rgba(0, 255, 180, ${heartPulse * 0.8})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 30, animTime * 3, animTime * 3 + Math.PI * 0.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 30, animTime * 3 + Math.PI, animTime * 3 + Math.PI * 1.8);
+      ctx.stroke();
+      // Counter-spinning inner ring
+      ctx.strokeStyle = `rgba(100, 255, 220, ${heartPulse * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 18, -animTime * 4, -animTime * 4 + Math.PI * 1.2);
+      ctx.stroke();
+
+      // Rotating arrow indicators pointing inward (4 arrows)
+      const arrowDist = 50;
+      ctx.fillStyle = `rgba(0, 255, 180, ${0.5 + fastPulse * 0.4})`;
+      for (let i = 0; i < 4; i++) {
+        const angle = animTime * 1.5 + (i * Math.PI / 2);
+        const ax = hCX + Math.cos(angle) * arrowDist;
+        const ay = hCY + Math.sin(angle) * arrowDist;
+        const toCenter = Math.atan2(hCY - ay, hCX - ax);
+        ctx.save();
+        ctx.translate(ax, ay);
+        ctx.rotate(toCenter);
+        ctx.beginPath();
+        ctx.moveTo(8, 0);
+        ctx.lineTo(-4, -5);
+        ctx.lineTo(-4, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Target crosshair (larger, brighter)
+      ctx.strokeStyle = `rgba(0, 255, 150, ${0.5 + Math.sin(animTime * 2) * 0.2})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(hCX, hCY, 24, animTime * 3, animTime * 3 + Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(hCX, hCY, 24, animTime * 3 + Math.PI, animTime * 3 + Math.PI * 2);
-      ctx.stroke();
-      // Target crosshair hint
-      ctx.strokeStyle = `rgba(255, 200, 100, ${0.3 + Math.sin(animTime * 2) * 0.1})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(hCX - 28, hCY); ctx.lineTo(hCX - 18, hCY);
-      ctx.moveTo(hCX + 18, hCY); ctx.lineTo(hCX + 28, hCY);
-      ctx.moveTo(hCX, hCY - 28); ctx.lineTo(hCX, hCY - 18);
-      ctx.moveTo(hCX, hCY + 18); ctx.lineTo(hCX, hCY + 28);
+      ctx.moveTo(hCX - 38, hCY); ctx.lineTo(hCX - 26, hCY);
+      ctx.moveTo(hCX + 26, hCY); ctx.lineTo(hCX + 38, hCY);
+      ctx.moveTo(hCX, hCY - 38); ctx.lineTo(hCX, hCY - 26);
+      ctx.moveTo(hCX, hCY + 26); ctx.lineTo(hCX, hCY + 38);
       ctx.stroke();
 
       // === BARRIERS (energy shields protecting heart) ===
