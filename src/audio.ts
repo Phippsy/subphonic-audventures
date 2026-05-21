@@ -3,6 +3,7 @@
 
 let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
+let sfxGain: GainNode | null = null;
 let bgmGain: GainNode | null = null;
 let bgmSource: AudioBufferSourceNode | null = null;
 let bgmPlaying = false;
@@ -13,6 +14,9 @@ const ensureContext = (): AudioContext => {
     masterGain = ctx.createGain();
     masterGain.gain.value = 0.6;
     masterGain.connect(ctx.destination);
+    sfxGain = ctx.createGain();
+    sfxGain.gain.value = 0.2;
+    sfxGain.connect(masterGain);
     bgmGain = ctx.createGain();
     bgmGain.gain.value = 0.18;
     bgmGain.connect(masterGain);
@@ -44,7 +48,7 @@ const playTone = (
   gain.gain.linearRampToValueAtTime(volume, ac.currentTime + attack);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + duration - decay);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + duration);
 };
@@ -67,7 +71,7 @@ const playNoise = (duration: number, volume: number, filterFreq: number, filterT
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + duration);
   source.connect(filter);
   filter.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   source.start(ac.currentTime);
 };
 
@@ -85,7 +89,7 @@ export const sfxJump = () => {
   gain.gain.setValueAtTime(0.18, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.2);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.2);
 };
@@ -101,7 +105,7 @@ export const sfxEnemyKill = () => {
   gain.gain.setValueAtTime(0.2, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.3);
   // Noise crunch
@@ -134,7 +138,7 @@ export const sfxKeyObtained = () => {
     gain.gain.linearRampToValueAtTime(i === 4 ? 0.12 : 0.15, ac.currentTime + t + 0.02);
     gain.gain.linearRampToValueAtTime(0, ac.currentTime + t + durations[i]);
     osc.connect(gain);
-    gain.connect(masterGain!);
+    gain.connect(sfxGain!);
     osc.start(ac.currentTime + t);
     osc.stop(ac.currentTime + t + durations[i]);
   });
@@ -156,7 +160,7 @@ export const sfxGateOpen = () => {
   gain1.gain.setValueAtTime(0.12, ac.currentTime);
   gain1.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
   osc1.connect(gain1);
-  gain1.connect(masterGain!);
+  gain1.connect(sfxGain!);
   osc1.start(ac.currentTime);
   osc1.stop(ac.currentTime + 1.2);
 
@@ -171,7 +175,7 @@ export const sfxGateOpen = () => {
   gain2.gain.linearRampToValueAtTime(0.14, ac.currentTime + 0.5);
   gain2.gain.linearRampToValueAtTime(0, ac.currentTime + 1.0);
   osc2.connect(gain2);
-  gain2.connect(masterGain!);
+  gain2.connect(sfxGain!);
   osc2.start(ac.currentTime);
   osc2.stop(ac.currentTime + 1.0);
 
@@ -194,7 +198,7 @@ export const sfxDamage = () => {
   gain.gain.setValueAtTime(0.2, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.25);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.25);
   playNoise(0.12, 0.1, 800, 'highpass');
@@ -545,7 +549,7 @@ export const sfxChapterTransition = () => {
   gain.gain.setValueAtTime(0.08, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.4);
   playNoise(0.2, 0.04, 1200, 'highpass');
@@ -568,7 +572,7 @@ export const sfxDeath = () => {
   gain.gain.setValueAtTime(0.2, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.9);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.9);
   // Static burst
@@ -581,7 +585,7 @@ export const sfxDeath = () => {
   gain2.gain.setValueAtTime(0.12, ac.currentTime + 0.2);
   gain2.gain.linearRampToValueAtTime(0, ac.currentTime + 0.8);
   osc2.connect(gain2);
-  gain2.connect(masterGain!);
+  gain2.connect(sfxGain!);
   osc2.start(ac.currentTime + 0.2);
   osc2.stop(ac.currentTime + 0.8);
 };
@@ -599,7 +603,7 @@ export const sfxWarpIn = () => {
   gain.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.15);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.5);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.5);
   // Sparkle
@@ -630,7 +634,7 @@ export const sfxExtraLife = () => {
     gain.gain.linearRampToValueAtTime(0.08, ac.currentTime + delay + 0.3);
     gain.gain.linearRampToValueAtTime(0, ac.currentTime + delay + 0.7);
     osc.connect(gain);
-    gain.connect(masterGain!);
+    gain.connect(sfxGain!);
     osc.start(ac.currentTime + delay);
     osc.stop(ac.currentTime + delay + 0.7);
   });
@@ -644,7 +648,7 @@ export const sfxExtraLife = () => {
   padGain.gain.linearRampToValueAtTime(0.03, ac.currentTime + 0.8);
   padGain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
   pad.connect(padGain);
-  padGain.connect(masterGain!);
+  padGain.connect(sfxGain!);
   pad.start(ac.currentTime);
   pad.stop(ac.currentTime + 1.2);
 };
@@ -661,7 +665,7 @@ export const sfxFall = () => {
   gain.gain.setValueAtTime(0.18, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 1.2);
   // Wind whoosh (filtered noise)
@@ -681,7 +685,7 @@ export const sfxThrust = () => {
   gain.gain.setValueAtTime(0.06, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.1);
   playNoise(0.06, 0.04, 400, 'lowpass');
@@ -698,7 +702,7 @@ export const sfxStaticHit = () => {
   gain.gain.setValueAtTime(0.2, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.2);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.2);
   playNoise(0.12, 0.15, 2000, 'highpass');
@@ -717,7 +721,7 @@ export const sfxInvincible = () => {
     gain.gain.setValueAtTime(0.15, t);
     gain.gain.linearRampToValueAtTime(0, t + 0.15);
     osc.connect(gain);
-    gain.connect(masterGain!);
+    gain.connect(sfxGain!);
     osc.start(t);
     osc.stop(t + 0.15);
   });
@@ -736,7 +740,7 @@ export const sfxRunnerWin = () => {
     gain.gain.setValueAtTime(0.18, t);
     gain.gain.linearRampToValueAtTime(0, t + 0.4);
     osc.connect(gain);
-    gain.connect(masterGain!);
+    gain.connect(sfxGain!);
     osc.start(t);
     osc.stop(t + 0.4);
   });
@@ -892,7 +896,7 @@ export const sfxBossHit = () => {
   gain.gain.setValueAtTime(0.2, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.25);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.25);
   // Metallic ring
@@ -912,7 +916,7 @@ export const sfxBossBeam = () => {
   gain.gain.linearRampToValueAtTime(0.12, ac.currentTime + 0.15);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 0.4);
   playNoise(0.3, 0.1, 3000, 'highpass');
@@ -937,7 +941,7 @@ export const sfxBossDefeat = () => {
   gain.gain.setValueAtTime(0.15, ac.currentTime);
   gain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.5);
   osc.connect(gain);
-  gain.connect(masterGain!);
+  gain.connect(sfxGain!);
   osc.start(ac.currentTime);
   osc.stop(ac.currentTime + 1.5);
   // Victory chime after delay
@@ -952,7 +956,7 @@ export const sfxBossDefeat = () => {
       gain2.gain.setValueAtTime(0.15, t2);
       gain2.gain.linearRampToValueAtTime(0, t2 + 0.5);
       osc2.connect(gain2);
-      gain2.connect(masterGain!);
+      gain2.connect(sfxGain!);
       osc2.start(t2);
       osc2.stop(t2 + 0.5);
     });

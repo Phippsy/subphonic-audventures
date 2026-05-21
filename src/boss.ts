@@ -13,6 +13,8 @@ const PLAYER_H = 44;
 const SHOOT_COOLDOWN = 0.28;
 const PROJECTILE_SPEED = 500;
 const BOSS_MAX_HP = 30;
+const BOSS_HEAD_HP = 15;
+const BOSS_HEART_HP = 15;
 const BOSS_X = WIDTH - 220;
 const BOSS_HEAD_Y_CENTER = 160;
 const BOSS_HEAD_RADIUS = 35;
@@ -79,6 +81,13 @@ const victoryDialog: { lines: string[]; speaker: string }[] = [
   { speaker: 'Sonia', lines: ['Thank you, everyone.', 'Patrick, James... even your hats.', 'We did this together.'] },
 ];
 
+const sonicShellDialog: { lines: string[]; speaker: string }[] = [
+  { speaker: 'Count Crosstalk', lines: ['Ha ha ha! You think a few dents', 'to my cockpit would stop me?', 'FOOL!'] },
+  { speaker: 'Count Crosstalk', lines: ['Activating SONIC SHELL!', 'My head is now impenetrable.', 'Nothing gets through this frequency barrier!'] },
+  { speaker: 'Sonia', lines: ['His cockpit\'s sealed itself in', 'some kind of resonant shield...', 'I can\'t get through!'] },
+  { speaker: 'Sonia', lines: ['Wait — his power core. It\'s', 'exposed inside the chest cavity!', 'That\'s his weak point now!'] },
+];
+
 // === MOUNT ===
 export function mountBoss(container: HTMLElement, onComplete: () => void, _onQuit: () => void): () => void {
   const canvas = document.createElement('canvas');
@@ -111,6 +120,17 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   let bossHeadY = BOSS_HEAD_Y_CENTER;
   let bossHeadPhase = 0;
 
+  // Two-stage boss: head phase then heart phase
+  let bossStage: 'head' | 'transition' | 'heart' = 'head';
+  let headHP = BOSS_HEAD_HP;
+  let heartHP = BOSS_HEART_HP;
+  // Heart target position (moves inside torso)
+  let heartY = 310; // starts at power core position
+  let heartPhase = 0;
+  // Barriers that protect the heart
+  let barriers: { y: number; hp: number; maxHp: number }[] = [];
+  let barrierRespawnTimer = 0;
+
   let projectiles: Projectile[] = [];
   let beams: Beam[] = [];
   let flyingBots: FlyingBot[] = [];
@@ -139,6 +159,12 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
   let wonDialogCooldown = 0;
   let showingCredits = false;
   let creditsTimer = 0;
+
+  // Sonic Shell transition dialog
+  let shellDialogActive = false;
+  let shellDialogPage = 0;
+  let shellDialogAlpha = 0;
+  let shellDialogCooldown = 0;
 
   // Input
   const keys: Record<string, boolean> = {};
@@ -224,7 +250,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
 
     // Phase transition detection
     if (phaseFlash > 0) phaseFlash -= dt * 2;
-    const currentPhase = bossHP > BOSS_MAX_HP * 0.66 ? 1 : bossHP > BOSS_MAX_HP * 0.33 ? 2 : 3;
+    const currentPhase = bossStage === 'head' ? (headHP > BOSS_HEAD_HP * 0.5 ? 1 : 2) : 3;
     if (currentPhase !== lastPhase && bossPhase === 'fight') {
       lastPhase = currentPhase;
       phaseFlash = 1.0;
@@ -282,6 +308,32 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       return;
     }
 
+    // Sonic Shell transition dialog
+    if (shellDialogActive) {
+      shellDialogAlpha = Math.min(1, shellDialogAlpha + dt * 3);
+      if (shellDialogCooldown > 0) shellDialogCooldown -= dt;
+      if (shellDialogCooldown <= 0 && (keys[' '] || keys['enter'])) {
+        keys[' '] = false;
+        keys['enter'] = false;
+        sfxMenuSelect();
+        shellDialogPage++;
+        shellDialogAlpha = 0;
+        shellDialogCooldown = 0.3;
+        if (shellDialogPage >= sonicShellDialog.length) {
+          shellDialogActive = false;
+          bossStage = 'heart';
+          // Spawn initial barriers
+          barriers = [
+            { y: heartY - 40, hp: 3, maxHp: 3 },
+            { y: heartY, hp: 3, maxHp: 3 },
+            { y: heartY + 40, hp: 3, maxHp: 3 },
+          ];
+          barrierRespawnTimer = 8;
+        }
+      }
+      return;
+    }
+
     // Credits / ending
     if (showingCredits) {
       creditsTimer += dt;
@@ -302,12 +354,19 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         // Restart
         playerHP = MAX_PLAYER_HP;
         bossHP = BOSS_MAX_HP;
+        headHP = BOSS_HEAD_HP;
+        heartHP = BOSS_HEART_HP;
+        bossStage = 'head';
         bossPhase = 'fight';
         bossDeathTimer = 0;
         projectiles = [];
         beams = [];
         flyingBots = [];
         particles = [];
+        barriers = [];
+        barrierRespawnTimer = 0;
+        heartY = 310;
+        heartPhase = 0;
         playerX = 100;
         playerY = HEIGHT / 2;
         gameOver = false;
@@ -316,6 +375,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
         difficulty = 0;
         beamSpawnTimer = 2.0;
         botSpawnTimer = 4.0;
+        lastPhase = 1;
         startBossBGM();
       }
       return;
@@ -404,38 +464,128 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
       p.y += p.vy * dt;
       p.life -= dt;
 
-      // Check hit on boss head
-      const headCX = BOSS_X + 90;
-      const headCY = bossHeadY;
-      const dist = Math.hypot(p.x - headCX, p.y - headCY);
-      if (dist < BOSS_HEAD_RADIUS + 4) {
-        p.life = 0;
-        bossHP--;
-        bossHitFlash = 0.2;
-        screenShakeIntensity = Math.max(screenShakeIntensity, 4);
-        sfxBossHit();
-        // Hit particles (big satisfying burst)
-        for (let i = 0; i < 12; i++) {
-          const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
-          const speed = 150 + Math.random() * 250;
-          particles.push({
-            x: p.x,
-            y: p.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 0.4 + Math.random() * 0.3,
-            maxLife: 0.7,
-            color: `hsl(${100 + Math.random() * 60}, 90%, ${50 + Math.random() * 30}%)`,
-          });
+      if (bossStage === 'head') {
+        // Phase 1: Hit the head
+        const headCX = BOSS_X + 90;
+        const headCY = bossHeadY;
+        const dist = Math.hypot(p.x - headCX, p.y - headCY);
+        if (dist < BOSS_HEAD_RADIUS + 4) {
+          p.life = 0;
+          headHP--;
+          bossHP--;
+          bossHitFlash = 0.2;
+          screenShakeIntensity = Math.max(screenShakeIntensity, 4);
+          sfxBossHit();
+          // Hit particles
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
+            const speed = 150 + Math.random() * 250;
+            particles.push({
+              x: p.x, y: p.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              life: 0.4 + Math.random() * 0.3,
+              maxLife: 0.7,
+              color: `hsl(${100 + Math.random() * 60}, 90%, ${50 + Math.random() * 30}%)`,
+            });
+          }
+          if (headHP <= 0) {
+            // Transition to heart phase
+            bossStage = 'transition';
+            shellDialogActive = true;
+            shellDialogPage = 0;
+            shellDialogAlpha = 0;
+            shellDialogCooldown = 0.5;
+            screenShakeIntensity = 15;
+            phaseFlash = 1.5;
+          }
         }
-        if (bossHP <= 0) {
-          bossPhase = 'dying';
-          bossDeathTimer = 0;
-          sfxBossDefeat();
+      } else if (bossStage === 'heart') {
+        // Phase 2: Hit the heart (moving inside torso)
+        // First check barriers
+        let hitBarrier = false;
+        for (const bar of barriers) {
+          if (bar.hp <= 0) continue;
+          // Barrier is a horizontal shield in front of the heart
+          const barX = BOSS_X + 30;
+          const barW = 40;
+          const barH = 20;
+          if (p.x >= barX && p.x <= barX + barW &&
+              p.y >= bar.y - barH / 2 && p.y <= bar.y + barH / 2) {
+            p.life = 0;
+            bar.hp--;
+            hitBarrier = true;
+            screenShakeIntensity = Math.max(screenShakeIntensity, 2);
+            // Barrier hit particles (purple/blue)
+            for (let i = 0; i < 6; i++) {
+              particles.push({
+                x: p.x, y: p.y,
+                vx: (Math.random() - 0.5) * 200,
+                vy: (Math.random() - 0.5) * 200,
+                life: 0.3 + Math.random() * 0.2,
+                maxLife: 0.5,
+                color: `hsl(${260 + Math.random() * 40}, 80%, ${50 + Math.random() * 30}%)`,
+              });
+            }
+            break;
+          }
+        }
+        if (!hitBarrier) {
+          // Check heart hit
+          const heartCX = BOSS_X + 90;
+          const heartCY = heartY;
+          const heartDist = Math.hypot(p.x - heartCX, p.y - heartCY);
+          if (heartDist < 28) {
+            p.life = 0;
+            heartHP--;
+            bossHP--;
+            bossHitFlash = 0.2;
+            screenShakeIntensity = Math.max(screenShakeIntensity, 5);
+            sfxBossHit();
+            // Hit particles (red/orange for heart)
+            for (let i = 0; i < 12; i++) {
+              const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
+              const speed = 150 + Math.random() * 250;
+              particles.push({
+                x: p.x, y: p.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.4 + Math.random() * 0.3,
+                maxLife: 0.7,
+                color: `hsl(${Math.random() * 40}, 90%, ${50 + Math.random() * 30}%)`,
+              });
+            }
+            if (heartHP <= 0) {
+              bossPhase = 'dying';
+              bossDeathTimer = 0;
+              sfxBossDefeat();
+            }
+          }
         }
       }
     }
     projectiles = projectiles.filter(p => p.life > 0 && p.x < WIDTH + 20);
+
+    // === HEART MOVEMENT (phase 2) ===
+    if (bossStage === 'heart') {
+      heartPhase += dt * (1.5 + difficulty * 1.0);
+      heartY = 280 + Math.sin(heartPhase) * 80;
+      heartY = Math.max(200, Math.min(400, heartY));
+      // Update barrier positions to follow heart loosely
+      if (barriers.length > 0) {
+        barriers[0].y = heartY - 40 + Math.sin(heartPhase * 0.7) * 10;
+        barriers[1].y = heartY + Math.sin(heartPhase * 0.5 + 1) * 15;
+        barriers[2].y = heartY + 40 + Math.sin(heartPhase * 0.8 + 2) * 10;
+      }
+      // Respawn destroyed barriers periodically
+      barrierRespawnTimer -= dt;
+      if (barrierRespawnTimer <= 0) {
+        for (const bar of barriers) {
+          if (bar.hp <= 0) bar.hp = bar.maxHp;
+        }
+        barrierRespawnTimer = 10 - difficulty * 3;
+      }
+    }
 
     // === BOSS HEAD MOVEMENT ===
     bossHeadPhase += dt * (1.2 + difficulty * 0.8);
@@ -493,11 +643,12 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     if (botSpawnTimer <= 0) {
       const formationType = Math.random();
       const botType: 'noise' | 'muffle' = Math.random() < 0.5 ? 'noise' : 'muffle';
-      const baseSpeed = -(BOT_SPEED + difficulty * 100 + Math.random() * 60);
+      const speedMult = bossStage === 'heart' ? 1.2 : 1.0;
+      const baseSpeed = -(BOT_SPEED + difficulty * 120 + Math.random() * 60) * speedMult;
       const baseY = 60 + Math.random() * (HEIGHT - 160);
 
-      if (formationType < 0.25 || difficulty < 0.2) {
-        // Single bot (early game / occasional)
+      if (formationType < 0.15 || difficulty < 0.15) {
+        // Single bot (early game / rare)
         flyingBots.push({
           x: WIDTH + 40,
           y: baseY,
@@ -507,12 +658,12 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
           alive: true,
         });
       } else if (formationType < 0.55) {
-        // Wavy line formation (3-5 bots in a sine wave pattern)
-        const count = 3 + Math.floor(difficulty * 2);
+        // Sine wave formation (3-6 bots flowing in sine pattern)
+        const count = 3 + Math.floor(difficulty * 3);
         for (let i = 0; i < count; i++) {
           flyingBots.push({
-            x: WIDTH + 40 + i * 50,
-            y: baseY + Math.sin(i * 1.2) * 50,
+            x: WIDTH + 40 + i * 45,
+            y: baseY + Math.sin(i * 1.0) * 60,
             w: 28, h: 28,
             vx: baseSpeed * (0.9 + Math.random() * 0.2),
             type: botType,
@@ -535,7 +686,7 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
           });
         }
       } else {
-        // Tight horizontal line (wall of bots)
+        // Tight horizontal wall of bots
         const count = 3 + Math.floor(difficulty * 3);
         const spacing = (HEIGHT - 120) / (count + 1);
         for (let i = 0; i < count; i++) {
@@ -549,7 +700,9 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
           });
         }
       }
-      botSpawnTimer = (2.5 - difficulty * 1.3) + Math.random() * 1.5;
+      // Faster spawns in heart phase
+      const stageMultiplier = bossStage === 'heart' ? 0.6 : 1.0;
+      botSpawnTimer = ((1.8 - difficulty * 1.0) + Math.random() * 1.2) * stageMultiplier;
     }
 
     for (const bot of flyingBots) {
@@ -1042,6 +1195,9 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     }
     if (wonDialogActive) {
       drawDialog(ctx, victoryDialog[wonDialogPage], wonDialogAlpha);
+    }
+    if (shellDialogActive) {
+      drawDialog(ctx, sonicShellDialog[shellDialogPage], shellDialogAlpha);
     }
 
     // === GAME OVER ===
@@ -1551,8 +1707,8 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     // === COCKPIT / HEAD (Count Crosstalk's command pod) ===
     const headFlash = bossHitFlash > 0;
 
-    // Head danger glow
-    if (bossPhase === 'fight') {
+    // Head danger glow (only in head phase)
+    if (bossPhase === 'fight' && bossStage === 'head') {
       const headGlowR = BOSS_HEAD_RADIUS + 18 + Math.sin(animTime * 3) * 5;
       const headGlowGrad = ctx.createRadialGradient(bx + 90, headY, BOSS_HEAD_RADIUS, bx + 90, headY, headGlowR);
       headGlowGrad.addColorStop(0, 'rgba(255, 0, 60, 0)');
@@ -1703,7 +1859,113 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.arc(bx + 90, hornBase - 38, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // === HP BAR (dramatic, above boss) ===
+    // === SONIC SHELL (phase 2 — head shield) ===
+    if (bossStage === 'heart' || bossStage === 'transition') {
+      const shellPulse = 0.4 + Math.sin(animTime * 4) * 0.2;
+      const shellR = BOSS_HEAD_RADIUS + 16;
+      // Outer resonant shell (hexagonal energy field)
+      ctx.strokeStyle = `rgba(0, 200, 255, ${shellPulse})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + animTime * 0.5;
+        const hx = bx + 90 + Math.cos(angle) * shellR;
+        const hy = headY + Math.sin(angle) * shellR;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      // Inner shell glow
+      const shellGlow = ctx.createRadialGradient(bx + 90, headY, BOSS_HEAD_RADIUS, bx + 90, headY, shellR + 5);
+      shellGlow.addColorStop(0, 'rgba(0, 200, 255, 0)');
+      shellGlow.addColorStop(0.7, `rgba(0, 150, 255, ${shellPulse * 0.15})`);
+      shellGlow.addColorStop(1, 'rgba(0, 100, 255, 0)');
+      ctx.fillStyle = shellGlow;
+      ctx.beginPath();
+      ctx.arc(bx + 90, headY, shellR + 5, 0, Math.PI * 2);
+      ctx.fill();
+      // "SONIC SHELL" label
+      ctx.fillStyle = `rgba(0, 200, 255, ${shellPulse * 0.7})`;
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SONIC SHELL', bx + 90, headY + BOSS_HEAD_RADIUS + 22);
+      ctx.textAlign = 'left';
+    }
+
+    // === HEART TARGET (phase 2 — exposed power core) ===
+    if (bossStage === 'heart') {
+      const hCX = bx + 90;
+      const hCY = heartY;
+      const heartPulse = 0.7 + Math.sin(animTime * 5) * 0.3;
+      // Heart target glow (pulsing, bright, indicating vulnerability)
+      const heartGlow = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 35);
+      heartGlow.addColorStop(0, `rgba(255, 50, 100, ${heartPulse * 0.6})`);
+      heartGlow.addColorStop(0.4, `rgba(255, 0, 60, ${heartPulse * 0.3})`);
+      heartGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = heartGlow;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 35, 0, Math.PI * 2);
+      ctx.fill();
+      // Heart core (bright target)
+      const heartCoreGrad = ctx.createRadialGradient(hCX, hCY, 0, hCX, hCY, 20);
+      heartCoreGrad.addColorStop(0, `rgba(255, 255, 200, ${heartPulse})`);
+      heartCoreGrad.addColorStop(0.3, `rgba(255, 80, 120, ${heartPulse * 0.9})`);
+      heartCoreGrad.addColorStop(0.7, `rgba(200, 0, 60, ${heartPulse * 0.6})`);
+      heartCoreGrad.addColorStop(1, 'rgba(100, 0, 30, 0)');
+      ctx.fillStyle = heartCoreGrad;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      // Spinning ring around heart
+      ctx.strokeStyle = `rgba(255, 100, 150, ${heartPulse * 0.6})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 24, animTime * 3, animTime * 3 + Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hCX, hCY, 24, animTime * 3 + Math.PI, animTime * 3 + Math.PI * 2);
+      ctx.stroke();
+      // Target crosshair hint
+      ctx.strokeStyle = `rgba(255, 200, 100, ${0.3 + Math.sin(animTime * 2) * 0.1})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hCX - 28, hCY); ctx.lineTo(hCX - 18, hCY);
+      ctx.moveTo(hCX + 18, hCY); ctx.lineTo(hCX + 28, hCY);
+      ctx.moveTo(hCX, hCY - 28); ctx.lineTo(hCX, hCY - 18);
+      ctx.moveTo(hCX, hCY + 18); ctx.lineTo(hCX, hCY + 28);
+      ctx.stroke();
+
+      // === BARRIERS (energy shields protecting heart) ===
+      for (const bar of barriers) {
+        if (bar.hp <= 0) continue;
+        const barX = bx + 30;
+        const barAlpha = bar.hp / bar.maxHp;
+        const barPulse = 0.5 + Math.sin(animTime * 4 + bar.y * 0.05) * 0.2;
+        // Shield plate
+        ctx.fillStyle = `rgba(100, 50, 200, ${barAlpha * barPulse * 0.6})`;
+        ctx.beginPath();
+        ctx.roundRect(barX, bar.y - 10, 40, 20, 4);
+        ctx.fill();
+        // Shield edge glow
+        ctx.strokeStyle = `rgba(150, 100, 255, ${barAlpha * barPulse})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(barX, bar.y - 10, 40, 20, 4);
+        ctx.stroke();
+        // Energy pattern inside
+        ctx.strokeStyle = `rgba(200, 150, 255, ${barAlpha * 0.4})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(barX + 5, bar.y);
+        ctx.lineTo(barX + 15, bar.y - 5);
+        ctx.lineTo(barX + 25, bar.y);
+        ctx.lineTo(barX + 35, bar.y + 5);
+        ctx.stroke();
+      }
+    }
+
+    // === HP BAR (dramatic, above boss — two-phase) ===
     const hpBarW = 170;
     const hpBarH = 14;
     const hpBarX = bx + 5;
@@ -1713,23 +1975,31 @@ export function mountBoss(container: HTMLElement, onComplete: () => void, _onQui
     ctx.fillRect(hpBarX - 3, hpBarY - 3, hpBarW + 6, hpBarH + 6);
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
-    // HP fill
-    const hpRatio = Math.max(0, bossHP / BOSS_MAX_HP);
-    const hpColor = hpRatio > 0.5 ? '#ff2244' : hpRatio > 0.25 ? '#ff8800' : '#ffcc00';
+    // HP fill — show active phase HP
+    const activeHP = bossStage === 'head' ? headHP : heartHP;
+    const activeMaxHP = bossStage === 'head' ? BOSS_HEAD_HP : BOSS_HEART_HP;
+    const hpRatio = Math.max(0, activeHP / activeMaxHP);
+    const hpColor = bossStage === 'head'
+      ? (hpRatio > 0.5 ? '#ff2244' : hpRatio > 0.25 ? '#ff8800' : '#ffcc00')
+      : (hpRatio > 0.5 ? '#cc00ff' : hpRatio > 0.25 ? '#ff00aa' : '#ff6600');
     ctx.fillStyle = hpColor;
     ctx.fillRect(hpBarX + 1, hpBarY + 1, (hpBarW - 2) * hpRatio, hpBarH - 2);
     // Shimmer on HP
     ctx.fillStyle = `rgba(255, 255, 255, ${0.15 + Math.sin(animTime * 6) * 0.08})`;
     ctx.fillRect(hpBarX + 1, hpBarY + 1, (hpBarW - 2) * hpRatio, (hpBarH - 2) / 2);
+    // Phase divider (midpoint marker)
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(hpBarX + hpBarW / 2, hpBarY, 1, hpBarH);
     // Border
     ctx.strokeStyle = '#5a3a6a';
     ctx.lineWidth = 2;
     ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
-    // Name
+    // Name + stage indicator
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('☠ COUNT CROSSTALK', hpBarX + hpBarW / 2, hpBarY - 6);
+    const stageLabel = bossStage === 'head' ? '☠ COCKPIT' : '♥ POWER CORE';
+    ctx.fillText(stageLabel, hpBarX + hpBarW / 2, hpBarY - 6);
     ctx.textAlign = 'left';
 
     // === AMBIENT EFFECTS ===
